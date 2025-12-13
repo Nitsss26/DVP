@@ -1,0 +1,11 @@
+name = "barkatullah-credentials-api"
+main = "worker.js"
+compatibility_date = "2024-11-12"
+
+# Account ID - Personal account
+account_id = "e419b36ea249afa1d3ab8589d042213c"
+
+# KV namespace for storing credentials
+[[kv_namespaces]]
+binding = "CREDENTIALS_KV"
+id = "d2cfa302c8984f60b94e25a554face97"  # Will be replaced during deployment
