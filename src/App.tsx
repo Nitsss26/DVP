@@ -15,8 +15,15 @@ import EmployerDashboard from "./pages/EmployerDashboard";
 import EmployerVerificationDetail from "./pages/EmployerVerificationDetail";
 import ApiAndBilling from "./pages/ApiAndBilling";
 import StudentRegistry from "./pages/StudentRegistry";
+import ManageRecords from "./pages/institute/ManageRecords";
+import GrantAccessPage from "./pages/institute/GrantAccessPage";
 import UniversityDashboard from "./pages/UniversityDashboard";
 import AccessLogs from "./pages/AccessLogs";
+import RaiseDataConcern from "./pages/student/RaiseDataConcern";
+import StudentHelpResponse from "./pages/student/HelpResponse";
+import EmployerHelpRequest from "./pages/employer/HelpRequest";
+import StudentConcerns from "./pages/institute/StudentConcerns";
+import EmployerStudentLogs from "./pages/institute/EmployerStudentLogs";
 
 // Auth Pages
 import Login from "./pages/auth/Login";
@@ -47,20 +54,25 @@ const App = () => (
             <Route element={<ProtectedRoute allowedRoles={['student']} />}>
               <Route path="/my-profile" element={<MyProfile />} />
               <Route path="/student/grants" element={<StudentGrants />} />
+              <Route path="/student/concerns" element={<RaiseDataConcern />} />
+              <Route path="/student/help-requests" element={<StudentHelpResponse />} />
             </Route>
 
             {/* Registry & Verification (Institute Only) */}
             <Route element={<ProtectedRoute allowedRoles={['institute']} />}>
               <Route path="/registry" element={<StudentRegistry />} />
-              <Route path="/access-logs" element={<AccessLogs />} />
-              {/* Institute can verify via Registry */}
-              <Route path="/verify-credential/:id" element={<EmployerVerificationDetail />} />
               <Route path="/university/dashboard" element={<UniversityDashboard />} />
+              <Route path="/manage-records" element={<ManageRecords />} />
+              <Route path="/grant-access" element={<GrantAccessPage />} />
+              <Route path="/access-logs" element={<AccessLogs />} />
+              <Route path="/student-concerns" element={<StudentConcerns />} />
+              <Route path="/communication-logs" element={<EmployerStudentLogs />} />
             </Route>
 
             {/* Employer Specific */}
             <Route element={<ProtectedRoute allowedRoles={['employer']} />}>
               <Route path="/employer/requests" element={<EmployerRequests />} />
+              <Route path="/employer/help" element={<EmployerHelpRequest />} />
               <Route path="/employer/profile" element={<MyProfile />} /> {/* Reusing Profile for now */}
               <Route path="/request-verification" element={<RequestVerification />} />
             </Route>

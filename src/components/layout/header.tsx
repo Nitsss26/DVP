@@ -49,18 +49,24 @@ export function Header() {
                                     <Link to="/registry" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
                                         Registry
                                     </Link>
+                                    <Link to="/university/dashboard" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Dashboard
+                                    </Link>
+                                    <Link to="/manage-records" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Manage Records
+                                    </Link>
+                                    <Link to="/grant-access" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Grant Access
+                                    </Link>
                                     <Link to="/access-logs" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
                                         Access Logs
                                     </Link>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1"
-                                        onClick={() => setIsGrantModalOpen(true)}
-                                    >
-                                        <Shield className="h-4 w-4" />
-                                        Grant Access
-                                    </Button>
+                                    <Link to="/student-concerns" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Concerns
+                                    </Link>
+                                    <Link to="/communication-logs" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Comm Logs
+                                    </Link>
                                 </>
                             )}
 
@@ -73,6 +79,12 @@ export function Header() {
                                     <Link to="/student/grants" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
                                         My Grants
                                     </Link>
+                                    <Link to="/student/concerns" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Raise Concern
+                                    </Link>
+                                    <Link to="/student/help-requests" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Help Requests
+                                    </Link>
                                 </>
                             )}
 
@@ -84,6 +96,9 @@ export function Header() {
                                     </Link>
                                     <Link to="/employer/requests" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
                                         My Requests
+                                    </Link>
+                                    <Link to="/employer/help" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                        Ask Me Data/Raise Concern
                                     </Link>
                                 </>
                             )}
