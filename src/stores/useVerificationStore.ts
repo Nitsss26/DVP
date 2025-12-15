@@ -31,7 +31,10 @@ interface VerificationState {
     revokeAccess: (requestId: string) => void;
     getRequestsForStudent: (enrlNo: string) => AccessRequest[];
     getRequestsForEmployer: () => AccessRequest[];
+    syncFromStorage: () => void; // New: manual sync from localStorage
 }
+
+const STORAGE_KEY = 'verification-store';
 
 export const useVerificationStore = create<VerificationState>()(
     persist(
@@ -83,15 +86,47 @@ export const useVerificationStore = create<VerificationState>()(
             },
 
             getRequestsForStudent: (enrlNo) => {
-                return get().requests.filter(req => req.studentEnrlNo === enrlNo);
+                return get().requests.filter(req => req.studentEnrlNo.toLowerCase() === enrlNo.toLowerCase());
             },
 
             getRequestsForEmployer: () => {
                 return get().requests;
+            },
+
+            // Sync state from localStorage (used for cross-tab sync)
+            syncFromStorage: () => {
+                try {
+                    const stored = localStorage.getItem(STORAGE_KEY);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed?.state?.requests) {
+                            set({ requests: parsed.state.requests });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to sync from storage:', e);
+                }
             }
         }),
         {
-            name: 'verification-store',
+            name: STORAGE_KEY,
         }
     )
 );
+
+// Cross-tab synchronization using storage event
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (event) => {
+        if (event.key === STORAGE_KEY && event.newValue) {
+            // Another tab updated the store, sync our state
+            useVerificationStore.getState().syncFromStorage();
+        }
+    });
+
+    // Also check for updates when the tab becomes visible (handles some edge cases)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            useVerificationStore.getState().syncFromStorage();
+        }
+    });
+}
