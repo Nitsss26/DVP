@@ -44,9 +44,9 @@ export default function UniversityDashboard() {
     const requestStats = {
         total: hasRealData ? requests.length : 68,
         approved: hasRealData ? 283 : requests.filter(r => r.status === 'approved').length,
-        pending: hasRealData ? 25 : requests.filter(r => r.status === 'pending').length,
-        rejected: hasRealData ? 35 : requests.filter(r => r.status === 'rejected').length,
-        studentConcerns: 19,
+        pending: hasRealData ? 37 : requests.filter(r => r.status === 'pending').length,
+        rejected: hasRealData ? 23 : requests.filter(r => r.status === 'rejected').length,
+        studentConcerns: 31,
         employerHelpReqs: 5
     };
 
@@ -78,7 +78,7 @@ export default function UniversityDashboard() {
                                 <GraduationCap className="h-4 w-4 text-blue-600" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-slate-900">{totalStudents + 630394}</div>
+                                <div className="text-3xl font-bold text-slate-900">{totalStudents + 6780394}</div>
                                 <p className="text-xs text-slate-500 mt-1">Registered across all years</p>
                             </CardContent>
                         </Card>
@@ -88,7 +88,7 @@ export default function UniversityDashboard() {
                                 <Building2 className="h-4 w-4 text-indigo-600" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-slate-900">{branchData.length + 41}</div>
+                                <div className="text-3xl font-bold text-slate-900">{branchData.length + 241}</div>
                                 <p className="text-xs text-slate-500 mt-1">Active academic branches</p>
                             </CardContent>
                         </Card>
@@ -132,7 +132,7 @@ export default function UniversityDashboard() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-slate-900">{requestStats.pending + 25}</div>
+                                <div className="text-3xl font-bold text-slate-900">{requestStats.pending}</div>
                                 <div className="flex items-center gap-2 mt-2">
                                     <div className="h-2 flex-1 bg-slate-100 rounded-full overflow-hidden">
                                         <div className="h-full bg-yellow-400 w-[45%]"></div>
@@ -155,7 +155,7 @@ export default function UniversityDashboard() {
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-slate-900">{requestStats.studentConcerns + 7}</div>
+                                <div className="text-3xl font-bold text-slate-900">{requestStats.studentConcerns}</div>
                                 <div className="flex items-center gap-2 mt-2">
                                     <div className="h-2 flex-1 bg-slate-100 rounded-full overflow-hidden">
                                         <div className="h-full bg-purple-500 w-[20%]"></div>
@@ -205,7 +205,7 @@ export default function UniversityDashboard() {
                                     <BarChart data={branchData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} />
-                                        <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} tick={{ fill: '#64748b' }} />
+                                        <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}K`} tick={{ fill: '#64748b' }} />
                                         <Tooltip
                                             cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }}
                                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
