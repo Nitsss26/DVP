@@ -3,41 +3,70 @@ import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { StatusChip } from "@/components/ui/status-chip";
 import {
   Shield,
   GraduationCap,
   Briefcase,
   CheckCircle,
   Search,
+  User,
+  Lock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getStudent, get8thSemesterRecord, StudentData, ExamRecord } from "@/data/mockData";
 
 export default function Index() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [enrollmentInput, setEnrollmentInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState<{ student: StudentData; record: ExamRecord } | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!enrollmentInput.trim()) return;
 
+    setLoading(true);
+    setSearchResult(null);
+
+    // Simulate API delay
+    await new Promise(r => setTimeout(r, 600));
+
+    const foundStudent = getStudent(enrollmentInput);
+    if (foundStudent) {
+      const record = get8thSemesterRecord(foundStudent);
+      if (record) {
+        setSearchResult({ student: foundStudent, record });
+      }
+    } else {
+      toast.error("No record found for this enrollment number.");
+    }
+
+    setLoading(false);
+  };
+
+  const handleRequestAccess = () => {
     if (!currentUser) {
-      toast.error("Please login to verify credentials.");
-      navigate('/login');
+      toast.info("Please login as an employer to request access to student records.");
+      navigate('/login', { state: { role: 'employer' } });
       return;
     }
 
-    if (currentUser.role === 'student' && currentUser.enrollmentNo !== enrollmentInput) {
-      toast.error("Students can only view their own profile.");
-      return;
+    if (currentUser.role === 'employer' && searchResult) {
+      navigate(`/verify/${searchResult.student.EnrlNo}`);
+    } else if (currentUser.role === 'student') {
+      if (currentUser.enrollmentNo === enrollmentInput) {
+        navigate(`/verify/${enrollmentInput}`);
+      } else {
+        toast.error("Students can only view their own profile.");
+      }
+    } else {
+      navigate(`/verify/${enrollmentInput}`);
     }
-
-    // If Employer/Institute or Matching Student (though student view is profile)
-    // Redirecting to registry/verify path
-    navigate(`/verify/${enrollmentInput}`);
   };
 
   return (
@@ -77,13 +106,17 @@ export default function Index() {
                   <Search className="w-6 h-6 text-slate-400 ml-3" />
                   <Input
                     type="text"
-                    placeholder="Enter Enrollment Number (e.g., R1900456)"
+                    placeholder="Enter Enrollment Number (e.g., R158237200015)"
                     className="border-0 shadow-none focus-visible:ring-0 text-lg h-12 text-slate-800 placeholder:text-slate-400"
                     value={enrollmentInput}
                     onChange={(e) => setEnrollmentInput(e.target.value)}
                   />
-                  <Button size="lg" className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-8 h-12 rounded-lg text-base font-semibold transition-all">
-                    Verify Now
+                  <Button
+                    size="lg"
+                    className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-8 h-12 rounded-lg text-base font-semibold transition-all"
+                    disabled={loading}
+                  >
+                    {loading ? "Searching..." : "Verify Now"}
                   </Button>
                 </div>
               </form>
@@ -115,6 +148,76 @@ export default function Index() {
             )}
           </div>
         </section>
+
+        {/* Search Results Section - Shows when a student is found */}
+        {searchResult && (
+          <section className="py-12 bg-slate-100 border-b border-slate-200">
+            <div className="container mx-auto px-4 max-w-4xl">
+              <Card className="p-6 border-l-4 border-l-blue-600 border-t border-r border-b border-slate-200 shadow-lg bg-white animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                      {searchResult.student.Details.Profile.StudentPhoto ?
+                        <img src={searchResult.student.Details.Profile.StudentPhoto} className="w-full h-full rounded-full object-cover" /> :
+                        <User className="w-8 h-8" />
+                      }
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-tight">{searchResult.student.Details.Profile.StudentName}</h2>
+                      <div className="flex items-center gap-2 text-slate-500 font-mono mt-1">
+                        <div className="w-2 h-2 rounded-full bg-slate-300"></div>
+                        {searchResult.student.EnrlNo}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 md:mt-0 text-right">
+                    <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Status</div>
+                    <StatusChip status="valid" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Degree Program</div>
+                    <div className="font-semibold text-slate-800 text-lg leading-snug">
+                      {searchResult.record.ExamName.split('(')[0]} <span className="text-slate-500 font-normal text-base">( CGPA )</span>
+                    </div>
+                    <div className="text-slate-500 mt-1">{searchResult.record.ExamName.split(' ').slice(-3).join(' ')}</div>
+
+                    {/* Session Field */}
+                    <div className="mt-4">
+                      <div className="text-xs font-bold text-slate-400 uppercase mb-1">Session</div>
+                      <div className="font-medium text-slate-700">2017-2021</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Institution</div>
+                    <div className="font-semibold text-slate-800 text-lg leading-snug">{searchResult.record.College}</div>
+                    <div className="text-slate-500 mt-1">U.T.D. B.V.V. BHOPAL</div>
+                  </div>
+                </div>
+
+                {/* Request Access Section */}
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                  <div className="bg-slate-50 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 text-slate-600">
+                      <Lock className="w-5 h-5 text-slate-400" />
+                      <span className="text-sm">
+                        Personal details, contact info, and detailed marksheets require access permission.
+                      </span>
+                    </div>
+                    <Button
+                      onClick={handleRequestAccess}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 whitespace-nowrap"
+                    >
+                      {currentUser?.role === 'employer' ? 'Request Full Access' : 'Login to Request Access'}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </section>
+        )}
 
         {/* How It Works Section */}
         <section className="py-24 bg-white">

@@ -18,7 +18,7 @@ export default function VerifyCredential() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { requests } = useVerificationStore();
+  const { requests, syncFromStorage } = useVerificationStore();
   const [enrollmentNumber, setEnrollmentNumber] = useState("");
 
   const [mockStudent, setMockStudent] = useState<StudentData | undefined>(undefined);
@@ -82,6 +82,10 @@ export default function VerifyCredential() {
 
   const handleSearch = async (termToSearch: string) => {
     if (!termToSearch.trim()) return;
+
+    // Sync from localStorage to get latest requests before checking status
+    syncFromStorage();
+
     setLoading(true);
     setMockStudent(undefined);
     setMock8thRec(undefined);
@@ -110,6 +114,8 @@ export default function VerifyCredential() {
   };
 
   useEffect(() => {
+    // Sync from localStorage on mount to get latest requests
+    syncFromStorage();
     if (id) {
       setEnrollmentNumber(id);
       handleSearch(id);
