@@ -6,6 +6,7 @@ export interface User {
     name: string;
     role: UserRole;
     phone?: string;
+    password?: string; // User-created password during signup
     // Employer specifics
     companyName?: string;
     designation?: string;

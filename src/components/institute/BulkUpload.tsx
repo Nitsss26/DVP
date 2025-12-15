@@ -13,7 +13,7 @@ export function BulkUpload({ onUpload }: BulkUploadProps) {
     const [csvContent, setCsvContent] = useState("");
 
     // Sample CSV format
-    const sampleCSV = `EnrlNo,StudentName,FatherName,Course,Batch\nR15CS001,John Doe,Richard Doe,B.E. CSE,2020-2024\nR15CS002,Jane Smith,Robert Smith,B.E. CSE,2020-2024`;
+    const sampleCSV = `EnrlNo,StudentName,FatherName,Course,Batch\nR15CS001,Mohit Sharma,Richard Doe,B.E. CSE,2020-2024\nR15CS002,Jane Smith,Robert Smith,B.E. CSE,2020-2024`;
 
     const handleDownloadSample = () => {
         const blob = new Blob([sampleCSV], { type: 'text/csv' });

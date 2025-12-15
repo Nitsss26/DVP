@@ -401,7 +401,7 @@ const ApiAndBilling = () => {
                       <Label htmlFor="cardholder">Cardholder Name</Label>
                       <Input
                         id="cardholder"
-                        placeholder="John Doe"
+                        placeholder="Mohit Sharma"
                       />
                     </div>
 

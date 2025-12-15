@@ -11,6 +11,7 @@ interface AuthContextType {
     revokeAccess: (email: string) => void;
     registerUser: (user: User) => void;
     findUser: (email: string) => User | undefined;
+    updateUserPassword: (email: string, newPassword: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,14 +82,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const updated = [...registeredUsers, user];
         setRegisteredUsers(updated);
         localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
-        login(user); // Auto login after signup
+        // Don't auto-login, redirect to login page instead
     };
 
     // Helper to find user in "DB"
     const findUser = (email: string): User | undefined => {
         // Mock Institute user is not in "DB", handled separately in Login page
         return registeredUsers.find(u => u.email === email);
-    }
+    };
+
+    // Update user password (for forgot password flow)
+    const updateUserPassword = (email: string, newPassword: string) => {
+        const updated = registeredUsers.map(user => {
+            if (user.email === email) {
+                return { ...user, password: newPassword };
+            }
+            return user;
+        });
+        setRegisteredUsers(updated);
+        localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
+    };
 
     return (
         <AuthContext.Provider value={{
@@ -99,9 +112,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isAccessGranted,
             grantedEmails,
             revokeAccess,
-            // Expose these for usage in Login/Signup pages (casting to any to avoid interface bloat for now, or export separate hook)
             registerUser,
-            findUser
+            findUser,
+            updateUserPassword
         }}>
             {children}
         </AuthContext.Provider>

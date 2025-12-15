@@ -189,18 +189,17 @@ export default function VerifyCredential() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
                   <div>
                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Degree Program</div>
-                    {hasAccessTo("Academic Summary & Division") ? (
-                      <>
-                        <div className="font-semibold text-slate-800 text-lg leading-snug">
-                          {mock8thRec.ExamName.split('(')[0]} <span className="text-slate-500 font-normal text-base">( CGPA )</span>
-                        </div>
-                        <div className="text-slate-500 mt-1">{mock8thRec.ExamName.split(' ').slice(-3).join(' ')}</div>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2 text-slate-400 italic mt-2">
-                        <Lock className="w-4 h-4" /> Academic Summary Hidden
-                      </div>
-                    )}
+                    <div className="font-semibold text-slate-800 text-lg leading-snug">
+                      {mock8thRec.ExamName.split('(')[0]} <span className="text-slate-500 font-normal text-base">( CGPA )</span>
+                    </div>
+                    <div className="text-slate-500 mt-1">{mock8thRec.ExamName.split(' ').slice(-3).join(' ')}</div>
+
+                    {/* Session Field */}
+                    <div className="mt-4">
+                      <div className="text-xs font-bold text-slate-400 uppercase mb-1">Session</div>
+                      {/* <div className="font-medium text-slate-700">{mock8thRec.AcademicYear || '2017-2021'}</div> */}
+                      <div className="font-medium text-slate-700">2017-2021</div>
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Institution</div>

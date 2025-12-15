@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
-import { INSTITUTE_EMAIL, INSTITUTE_PASS, MOCK_OTP, User } from '../../types/auth'; // Added User
+import { Loader2, Lock, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import { INSTITUTE_EMAIL, INSTITUTE_PASS, MOCK_OTP, User } from '../../types/auth';
 import { toast } from 'sonner';
 
 const Login = () => {
@@ -30,15 +30,13 @@ const Login = () => {
         }
     }, [location]);
 
-    // Standard Login Handler
+    // Student/Employer Login - Direct login without OTP
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate API delay
         await new Promise(r => setTimeout(r, 600));
 
-        // 1. Identify User Type & Validate Credentials
         let userToLogin: User | null = null;
         let isCredentialValid = false;
 
@@ -68,54 +66,44 @@ const Login = () => {
             }
         }
 
-        // B. Check Registered Users (if not magic)
+        // B. Check Registered Users
         if (!isCredentialValid) {
             const foundUser = findUser(email);
-            if (foundUser && foundUser.role === loginRole && password === "123456") {
-                userToLogin = foundUser;
-                isCredentialValid = true;
+            if (foundUser && foundUser.role === loginRole) {
+                const userPassword = foundUser.password || "123456";
+                if (password === userPassword) {
+                    userToLogin = foundUser;
+                    isCredentialValid = true;
+                }
             }
         }
 
-        // 2. Handle Authentication Flow
+        // Handle result
         if (!isCredentialValid) {
-            // Check if user exists but with wrong role for better error msg
             const existingUser = findUser(email);
             if (existingUser && existingUser.role !== loginRole) {
                 toast.error(`Account found but it is a ${existingUser.role}. Please switch tabs.`);
             } else {
-                toast.error("Invalid credentials.");
+                toast.error("Invalid credentials. Please check your email and password.");
             }
             setIsLoading(false);
             return;
         }
 
-        // Step 1: Verify Password -> Show OTP
-        if (!showOtp) {
-            setShowOtp(true);
-            toast.info("Password verified. Please enter OTP.");
-            setIsLoading(false);
-            return;
-        }
-
-        // Step 2: Verify OTP -> Login
-        if (showOtp) {
-            if (otp === "123456") {
-                if (userToLogin) {
-                    login(userToLogin);
-                    toast.success(`Welcome back, ${userToLogin.name}!`);
-                    if (userToLogin.role === 'student') navigate('/verify/R158237200015');
-                    else navigate('/employer/requests');
-                }
+        // Direct Login - No OTP needed for Student/Employer
+        if (userToLogin) {
+            login(userToLogin);
+            toast.success(`Welcome back, ${userToLogin.name}!`);
+            if (userToLogin.role === 'student') {
+                navigate(`/verify/${userToLogin.enrollmentNo || 'R158237200015'}`);
             } else {
-                toast.error("Invalid OTP.");
+                navigate('/employer/requests');
             }
-            setIsLoading(false);
-            return;
         }
+        setIsLoading(false);
     };
 
-    // Institute Login Handler
+    // Institute Login Handler (with OTP for granted users)
     const handleInstituteLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -137,7 +125,6 @@ const Login = () => {
 
         // 2. Granted Access Login (With OTP)
         if (isAccessGranted(email)) {
-            // Step 1: Verify Password
             if (!showOtp) {
                 if (password === "123456") {
                     setShowOtp(true);
@@ -149,10 +136,7 @@ const Login = () => {
                     setIsLoading(false);
                     return;
                 }
-            }
-
-            // Step 2: Verify OTP
-            else {
+            } else {
                 if (otp === "123456") {
                     login({
                         uid: `staff_${Date.now()}`,
@@ -180,18 +164,18 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
             <div className="w-full max-w-md space-y-8">
                 <div className="text-center">
-                    {/* Colorful Logo */}
                     <img src="/barkatullah.png" alt="Logo" className="mx-auto h-24 w-24 object-contain" />
                     <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Sign in</h2>
                 </div>
 
-                <Tabs defaultValue="student" className="w-full" onValueChange={(val) => setLoginRole(val as any)}>
+                <Tabs defaultValue="student" className="w-full" onValueChange={(val) => { setLoginRole(val as any); setShowOtp(false); setOtp(""); }}>
                     <TabsList className="grid w-full grid-cols-3 mb-6">
                         <TabsTrigger value="student">Student</TabsTrigger>
                         <TabsTrigger value="employer">Employer</TabsTrigger>
                         <TabsTrigger value="institute">Institute</TabsTrigger>
                     </TabsList>
 
+                    {/* STUDENT LOGIN */}
                     <TabsContent value="student">
                         <Card>
                             <CardHeader>
@@ -199,79 +183,60 @@ const Login = () => {
                                 <CardDescription>Enter your credentials to access your academic profile.</CardDescription>
                             </CardHeader>
                             <form onSubmit={handleLogin}>
-                                <CardContent className="space-y-6">
-                                    {!showOtp ? (
-                                        <>
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="s-email">Email</Label>
-                                                    <div className="relative">
-                                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                                        <Input
-                                                            id="s-email"
-                                                            type="email"
-                                                            placeholder="student@gog.com"
-                                                            className="pl-10 h-11"
-                                                            value={email}
-                                                            onChange={(e) => setEmail(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <Label htmlFor="s-pass">Password</Label>
-                                                        <Link to="/forgot-password" state={{ role: 'student' }} className="text-sm text-blue-600 hover:underline">
-                                                            Forgot Password?
-                                                        </Link>
-                                                    </div>
-                                                    <div className="relative">
-                                                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                                        <Input
-                                                            id="s-pass"
-                                                            type="password"
-                                                            placeholder="123456"
-                                                            className="pl-10 h-11"
-                                                            value={password}
-                                                            onChange={(e) => setPassword(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="s-otp">Enter OTP</Label>
-                                            <div className="relative">
-                                                <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-blue-600" />
-                                                <Input
-                                                    id="s-otp"
-                                                    type="text"
-                                                    placeholder="123456"
-                                                    className="pl-10 h-11 border-blue-200 focus:border-blue-500 font-mono text-center tracking-widest text-lg"
-                                                    value={otp}
-                                                    onChange={(e) => setOtp(e.target.value)}
-                                                    required
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <p className="text-xs text-muted-foreground text-center mt-2">
-                                                OTP sent to {email}. (Use 123456)
-                                            </p>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="s-email">Email</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="s-email"
+                                                type="email"
+                                                placeholder="student@gog.com"
+                                                className="pl-10 h-11"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                required
+                                            />
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label htmlFor="s-pass">Password</Label>
+                                            <Link to="/forgot-password" state={{ role: 'student' }} className="text-sm text-blue-600 hover:underline">
+                                                Forgot Password?
+                                            </Link>
+                                        </div>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="s-pass"
+                                                type="password"
+                                                placeholder="••••••"
+                                                className="pl-10 h-11"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                 </CardContent>
-                                <CardFooter className="pt-2">
-                                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base shadow-sm mt-2" disabled={isLoading}>
+                                <CardFooter className="flex flex-col space-y-4 pt-6">
+                                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base" disabled={isLoading}>
                                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                        {showOtp ? "Verify & Login" : "Student Login"}
+                                        Login
                                     </Button>
+                                    <div className="text-center text-sm text-gray-500">
+                                        New User ?{' '}
+                                        <Link to="/signup" state={{ role: 'student' }} className="font-semibold text-blue-600 hover:text-blue-500 inline-flex items-center gap-1">
+                                            <UserPlus className="h-3 w-3" /> Create Account
+                                        </Link>
+                                    </div>
                                 </CardFooter>
                             </form>
                         </Card>
                     </TabsContent>
 
+                    {/* EMPLOYER LOGIN */}
                     <TabsContent value="employer">
                         <Card>
                             <CardHeader>
@@ -279,79 +244,60 @@ const Login = () => {
                                 <CardDescription>Login to request and verify candidate credentials.</CardDescription>
                             </CardHeader>
                             <form onSubmit={handleLogin}>
-                                <CardContent className="space-y-6">
-                                    {!showOtp ? (
-                                        <>
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="e-email">Work Email</Label>
-                                                    <div className="relative">
-                                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                                        <Input
-                                                            id="e-email"
-                                                            type="email"
-                                                            placeholder="employer@gog.com"
-                                                            className="pl-10 h-11"
-                                                            value={email}
-                                                            onChange={(e) => setEmail(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <Label htmlFor="e-pass">Password</Label>
-                                                        <Link to="/forgot-password" state={{ role: 'employer' }} className="text-sm text-blue-600 hover:underline">
-                                                            Forgot Password?
-                                                        </Link>
-                                                    </div>
-                                                    <div className="relative">
-                                                        <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                                                        <Input
-                                                            id="e-pass"
-                                                            type="password"
-                                                            placeholder="123456"
-                                                            className="pl-10 h-11"
-                                                            value={password}
-                                                            onChange={(e) => setPassword(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="e-otp">Enter OTP</Label>
-                                            <div className="relative">
-                                                <ShieldCheck className="absolute left-3 top-3 h-4 w-4 text-blue-600" />
-                                                <Input
-                                                    id="e-otp"
-                                                    type="text"
-                                                    placeholder="123456"
-                                                    className="pl-10 h-11 border-blue-200 focus:border-blue-500 font-mono text-center tracking-widest text-lg"
-                                                    value={otp}
-                                                    onChange={(e) => setOtp(e.target.value)}
-                                                    required
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <p className="text-xs text-muted-foreground text-center mt-2">
-                                                OTP sent to {email}. (Use 123456)
-                                            </p>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="e-email">Work Email/ Contact Number</Label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="e-email"
+                                                type="email"
+                                                placeholder="employer@gog.com or 9876543210"
+                                                className="pl-10 h-11"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                required
+                                            />
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <Label htmlFor="e-pass">Password</Label>
+                                            <Link to="/forgot-password" state={{ role: 'employer' }} className="text-sm text-blue-600 hover:underline">
+                                                Forgot Password?
+                                            </Link>
+                                        </div>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                            <Input
+                                                id="e-pass"
+                                                type="password"
+                                                placeholder="••••••"
+                                                className="pl-10 h-11"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
                                 </CardContent>
-                                <CardFooter className="pt-2">
-                                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base shadow-sm mt-2" disabled={isLoading}>
+                                <CardFooter className="flex flex-col space-y-4 pt-6">
+                                    <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-base" disabled={isLoading}>
                                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                        {showOtp ? "Verify & Login" : "Employer Login"}
+                                        Login
                                     </Button>
+                                    <div className="text-center text-sm text-gray-500">
+                                        New User ?{' '}
+                                        <Link to="/signup" state={{ role: 'employer' }} className="font-semibold text-blue-600 hover:text-blue-500 inline-flex items-center gap-1">
+                                            <UserPlus className="h-3 w-3" /> Create Account
+                                        </Link>
+                                    </div>
                                 </CardFooter>
                             </form>
                         </Card>
                     </TabsContent>
 
+                    {/* INSTITUTE LOGIN */}
                     <TabsContent value="institute">
                         <Card>
                             <CardHeader>
@@ -359,7 +305,7 @@ const Login = () => {
                                 <CardDescription>Access the University Registry and Dashboard.</CardDescription>
                             </CardHeader>
                             <form onSubmit={handleInstituteLogin}>
-                                <CardContent className="space-y-6">
+                                <CardContent className="space-y-4">
                                     {!showOtp ? (
                                         <>
                                             <div className="space-y-2">
@@ -384,7 +330,7 @@ const Login = () => {
                                                     <Input
                                                         id="i-pass"
                                                         type="password"
-                                                        placeholder="123456"
+                                                        placeholder="••••••"
                                                         className="pl-10 h-11"
                                                         value={password}
                                                         onChange={(e) => setPassword(e.target.value)}
@@ -415,7 +361,7 @@ const Login = () => {
                                         </div>
                                     )}
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="pt-6">
                                     <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-11" disabled={isLoading}>
                                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                         {showOtp ? "Verify & Login" : "Institute Login"}
