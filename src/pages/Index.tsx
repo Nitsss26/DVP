@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { getStudent, get8thSemesterRecord, StudentData, ExamRecord } from "@/data/mockData";
 
@@ -25,6 +25,8 @@ export default function Index() {
   const [enrollmentInput, setEnrollmentInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<{ student: StudentData; record: ExamRecord } | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
+  const resultsRef = useRef<HTMLElement>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +34,7 @@ export default function Index() {
 
     setLoading(true);
     setSearchResult(null);
+    setIsVerified(false);
 
     // Simulate API delay
     await new Promise(r => setTimeout(r, 600));
@@ -41,6 +44,11 @@ export default function Index() {
       const record = get8thSemesterRecord(foundStudent);
       if (record) {
         setSearchResult({ student: foundStudent, record });
+        setIsVerified(true);
+        // Auto-scroll to results section
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       }
     } else {
       toast.error("No record found for this enrollment number.");
@@ -107,10 +115,20 @@ export default function Index() {
                   <Input
                     type="text"
                     placeholder="Enter Enrollment Number (e.g., R158237200015)"
-                    className="border-0 shadow-none focus-visible:ring-0 text-lg h-12 text-slate-800 placeholder:text-slate-400"
+                    className="border-0 shadow-none focus-visible:ring-0 text-lg h-12 text-slate-800 placeholder:text-slate-400 flex-1"
                     value={enrollmentInput}
-                    onChange={(e) => setEnrollmentInput(e.target.value)}
+                    onChange={(e) => {
+                      setEnrollmentInput(e.target.value);
+                      setIsVerified(false);
+                    }}
                   />
+                  {isVerified && (
+                    <div className="flex items-center justify-center mr-2 animate-in fade-in zoom-in duration-300">
+                      <div className="bg-green-100 p-1.5 rounded-full">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                    </div>
+                  )}
                   <Button
                     size="lg"
                     className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-8 h-12 rounded-lg text-base font-semibold transition-all"
@@ -151,7 +169,7 @@ export default function Index() {
 
         {/* Search Results Section - Shows when a student is found */}
         {searchResult && (
-          <section className="py-12 bg-slate-100 border-b border-slate-200">
+          <section ref={resultsRef} className="py-12 bg-slate-100 border-b border-slate-200">
             <div className="container mx-auto px-4 max-w-4xl">
               <Card className="p-6 border-l-4 border-l-blue-600 border-t border-r border-b border-slate-200 shadow-lg bg-white animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
