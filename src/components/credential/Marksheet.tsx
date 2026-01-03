@@ -313,14 +313,14 @@ export const Marksheet: React.FC<MarksheetProps> = ({ student, record, isVerifie
                     <h3 className="font-bold underline mb-3 text-sm uppercase">Academic Summary</h3>
 
                     <div className="flex gap-4 mb-4">
-                        <div className="border border-black p-2 text-center w-28">
+                        <div className="border border-black p-2 text-center w-32 flex flex-col justify-center min-h-[60px]">
                             <div className="text-[10px] uppercase text-gray-600 mb-1">RESULT</div>
-                            <div className="font-bold text-lg leading-none">{record.Result}</div>
+                            <div className="font-bold text-sm leading-tight break-words">{record.Result}</div>
                         </div>
 
-                        <div className="border border-black p-2 text-center w-28">
+                        <div className="border border-black p-2 text-center w-32 flex flex-col justify-center min-h-[60px]">
                             <div className="text-[10px] uppercase text-gray-600 mb-1">SGPA</div>
-                            <div className="font-bold text-lg leading-none">{record.SGPA}</div>
+                            <div className="font-bold text-sm leading-tight break-words">{record.SGPA}</div>
                         </div>
                     </div>
                 </div>

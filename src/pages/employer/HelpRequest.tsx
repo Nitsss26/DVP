@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConcernStore } from "@/stores/useConcernStore";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Clock, CheckCircle2, Search, Loader2, User } from "lucide-react";
+import { Send, Clock, CheckCircle2, Search, Loader2, User, FileText } from "lucide-react";
 
 // Student suggestion type
 interface StudentSuggestion {
@@ -260,13 +260,27 @@ export default function EmployerHelpRequest() {
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="text-right text-sm max-w-[200px]">
-                                                        {req.studentResponse ? (
-                                                            <span className="text-slate-700 font-medium truncate block" title={req.studentResponse}>
-                                                                "{req.studentResponse}"
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-slate-400">-</span>
-                                                        )}
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            {req.studentResponse ? (
+                                                                <span className="text-slate-700 font-medium truncate block max-w-full" title={req.studentResponse}>
+                                                                    "{req.studentResponse}"
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-slate-400">-</span>
+                                                            )}
+
+                                                            {req.responseDocumentUrl && (
+                                                                <a
+                                                                    href={req.responseDocumentUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                                                >
+                                                                    <FileText className="w-3 h-3 mr-1" />
+                                                                    View Document
+                                                                </a>
+                                                            )}
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))

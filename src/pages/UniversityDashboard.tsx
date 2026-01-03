@@ -24,6 +24,7 @@ interface DashboardStats {
     studentConcerns: number;
     employerHelpReqs: number;
     staffCount: number;
+    totalEmployers: number;
     branchDistribution: { name: string; count: number }[];
 }
 
@@ -135,7 +136,7 @@ export default function UniversityDashboard() {
                                 <Briefcase className="h-4 w-4 text-orange-600" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-slate-900">34</div>
+                                <div className="text-3xl font-bold text-slate-900">{stats?.totalEmployers || 0}</div>
                                 <p className="text-xs text-slate-500 mt-1">Registered corporate partners</p>
                             </CardContent>
                         </Card>

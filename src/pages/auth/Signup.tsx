@@ -40,7 +40,6 @@ const Signup = () => {
 
     const [otpData, setOtpData] = useState({
         emailOtp: '',
-        mobileOtp: '',
         sent: false
     });
 
@@ -144,10 +143,8 @@ const Signup = () => {
                         onClick: () => navigator.clipboard.writeText(data.debugOtp)
                     }
                 });
-            } else if (role === 'student') {
-                toast.success(`OTP sent to ${formData.email}`);
             } else {
-                toast.success(`OTPs sent to ${formData.email} and ${formData.mobile}`);
+                toast.success(`OTP sent to ${formData.email}`);
             }
         } catch (error) {
             console.error(error);
@@ -179,22 +176,8 @@ const Signup = () => {
                 return;
             }
 
-            // If Employer, verify Mobile OTP (Mock Implementation as we don't have SMS gateway yet)
-            // But user asked for real OTP. Since we only implemented Email, we will mock Mobile or ask user if they want SMS API too?
-            // For now, let's keep Mobile OTP as mock or just verify Email to proceed?
-            // The prompt specifically asked for "email otps using the gmail API". 
-            // I will assume Mobile OTP is secondary or can remain mock-verified for now 
-            // OR I should use the same logic if mobile was implemented. 
-            // Current task scope is Email. I'll pass Mobile mock if entered correct mock value, or just bypass.
-            // Let's enforce MOCK for mobile to avoid blocking, but REAL for email.
-
-            if (role === 'employer') {
-                if (otpData.mobileOtp !== '123456') { // Keeping mock for mobile as per scope limit (no SMS API provided)
-                    toast.error("Invalid Mobile OTP (Demo: 123456)");
-                    setIsLoading(false);
-                    return;
-                }
-            }
+            // If Employer, previously verified Mobile OTP (Mock). Now removed as per request.
+            // Mobile OTP verification logic deleted.
 
             toast.success("Verification Successful! Now create your password.");
             setStep('password');
@@ -461,9 +444,7 @@ const Signup = () => {
                     <CardTitle>Verify Your Email</CardTitle>
                 </div>
                 <CardDescription>
-                    {role === 'student'
-                        ? `Enter the OTP sent to ${formData.email}`
-                        : 'Enter the OTPs sent to your email and mobile.'}
+                    Enter the OTP sent to {formData.email}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -477,18 +458,7 @@ const Signup = () => {
                     />
                 </div>
 
-                {/* Mobile OTP only for Employer */}
-                {role === 'employer' && (
-                    <div className="space-y-2">
-                        <Label>Mobile OTP (Demo: 123456)</Label>
-                        <Input
-                            value={otpData.mobileOtp}
-                            onChange={e => setOtpData({ ...otpData, mobileOtp: e.target.value })}
-                            placeholder="123456"
-                            className="h-11 text-center font-mono text-lg tracking-widest"
-                        />
-                    </div>
-                )}
+
             </CardContent>
             <CardFooter className="flex flex-col space-y-4 pt-4">
                 <Button className="w-full bg-blue-600 hover:bg-blue-700 h-11 text-base" onClick={handleVerifyOtps} disabled={isLoading}>

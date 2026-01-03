@@ -277,7 +277,8 @@ export default function VerifyCredential() {
 
               {/* Card 1: Main Student Identity - Matches Screenshot 1 */}
               <Card className="p-6 border-l-4 border-l-blue-600 border-t border-r border-b border-slate-200 shadow-sm bg-white">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center mb-6">
+                  {/* Column 1: Student Identity */}
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                       {mockStudent.Details.Profile.StudentPhoto ?
@@ -293,9 +294,22 @@ export default function VerifyCredential() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 md:mt-0 text-right">
-                    <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Status</div>
-                    <StatusChip status="valid" />
+
+                  {/* Column 2: Result & Status (Aligned with Institution column below) */}
+                  <div className="flex justify-between items-start h-full">
+                    {/* Result - Left Aligned to match Institution */}
+                    <div className="flex flex-col justify-center h-full">
+                      <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Result</div>
+                      <div className="text-xl font-semibold text-slate-800 uppercase tracking-wide">
+                        {mock8thRec.Result || 'NOT AVAILABLE'}
+                      </div>
+                    </div>
+
+                    {/* Status - Right Aligned */}
+                    <div className="text-right flex flex-col justify-center h-full">
+                      <div className="text-xs text-slate-400 font-semibold uppercase mb-1">Status</div>
+                      <StatusChip status="valid" />
+                    </div>
                   </div>
                 </div>
 

@@ -16,9 +16,11 @@ export default defineConfig(({ mode }) => ({
         target: 'https://uncavitied-shamanistic-cordie.ngrok-free.dev',
         changeOrigin: true,
         secure: false,
-        headers: {
-          "ngrok-skip-browser-warning": "true"
-        }
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, _req, _res) => {
+            proxyReq.setHeader('ngrok-skip-browser-warning', 'true');
+          });
+        },
       }
     }
   },
