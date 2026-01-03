@@ -70,7 +70,11 @@ const MyProfile = () => {
                                     </div>
                                     <div>
                                         <label className="text-sm text-gray-500">Member Since</label>
-                                        <p className="font-medium">December 2023</p>
+                                        <p className="font-medium">
+                                            {currentUser.createdAt
+                                                ? new Date(currentUser.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                                                : 'N/A'}
+                                        </p>
                                     </div>
                                     <div className="pt-2">
                                         <Button className="w-full" variant="outline" onClick={() => window.location.href = '/employer/requests'}>

@@ -4,9 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useConcernStore } from "@/stores/useConcernStore";
+import { useEffect } from "react";
+
+import { ExternalLink } from "lucide-react";
 
 export default function EmployerStudentLogs() {
-    const { helpRequests } = useConcernStore();
+    const { helpRequests, fetchHelpRequests } = useConcernStore();
+
+    // Fetch help requests from backend on mount
+    useEffect(() => {
+        fetchHelpRequests();
+    }, [fetchHelpRequests]);
 
     return (
         <div className="min-h-screen flex flex-col bg-slate-50">
@@ -55,7 +63,19 @@ export default function EmployerStudentLogs() {
                                         </TableCell>
                                         <TableCell className="max-w-[200px] text-sm">
                                             {req.studentResponse ? (
-                                                <span className="truncate block" title={req.studentResponse}>{req.studentResponse}</span>
+                                                <div>
+                                                    <span className="truncate block" title={req.studentResponse}>{req.studentResponse}</span>
+                                                    {req.responseDocumentUrl && (
+                                                        <a
+                                                            href={req.responseDocumentUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-xs text-blue-600 flex items-center gap-1 mt-1 hover:underline"
+                                                        >
+                                                            <ExternalLink className="w-3 h-3" /> View Attachment
+                                                        </a>
+                                                    )}
+                                                </div>
                                             ) : <span className="text-slate-400 italic">No response yet</span>}
                                         </TableCell>
                                     </TableRow>

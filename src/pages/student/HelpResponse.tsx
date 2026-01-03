@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useConcernStore } from "@/stores/useConcernStore";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare, Send, Check } from "lucide-react";
+import { MessageSquare, Send, Check, Loader2, Link as LinkIcon, ExternalLink, Upload, FileText } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -22,22 +22,66 @@ import {
 export default function StudentHelpResponse() {
     const { toast } = useToast();
     const { currentUser } = useAuth();
-    const { getHelpRequestsForStudent, respondToHelpRequest } = useConcernStore();
+    const { getHelpRequestsForStudent, respondToHelpRequest, fetchHelpRequests } = useConcernStore();
 
-    const studentEnrl = currentUser?.uid || "R158237200015";
+    // Fetch help requests from backend on mount
+    useEffect(() => {
+        fetchHelpRequests({ studentEnrlNo: currentUser?.enrollmentNo });
+    }, [fetchHelpRequests, currentUser?.enrollmentNo]);
+
+    const studentEnrl = currentUser?.enrollmentNo || currentUser?.uid || "R158237200015";
     const requests = getHelpRequestsForStudent(studentEnrl);
 
     const [responseText, setResponseText] = useState("");
     const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-    const handleRespond = () => {
-        if (!selectedReqId || !responseText) return;
+    // File upload state in Dialog
+    const [documentUrl, setDocumentUrl] = useState<string>('');
+    const [uploading, setUploading] = useState(false);
 
-        respondToHelpRequest(selectedReqId, responseText);
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (!selectedFile) return;
+
+        setUploading(true);
+        const uploadData = new FormData();
+        uploadData.append('file', selectedFile);
+        uploadData.append('upload_preset', 'DVP-Storage'); // Unsigned preset
+
+        try {
+            const res = await fetch('https://api.cloudinary.com/v1_1/dwaepohvf/auto/upload', {
+                method: 'POST',
+                body: uploadData
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                let url = data.secure_url;
+                if (selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf')) {
+                    url = url.replace('/upload/', '/upload/fl_attachment/');
+                }
+                setDocumentUrl(url);
+                // removed success toast
+            } else {
+                toast({ title: "Upload Failed", description: data.error?.message || "Upload failed", variant: "destructive" });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Upload failed.", variant: "destructive" });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleRespond = () => {
+        if (!selectedReqId || (!responseText && !documentUrl)) return;
+
+        respondToHelpRequest(selectedReqId, responseText, documentUrl);
 
         toast({ title: "Response Sent", description: "Your response has been sent to the employer." });
         setResponseText("");
+        setDocumentUrl("");
         setSelectedReqId(null);
         setIsDialogOpen(false);
     };
@@ -78,7 +122,11 @@ export default function StudentHelpResponse() {
                                     {req.status === 'open' ? (
                                         <Dialog open={isDialogOpen && selectedReqId === req.id} onOpenChange={(open) => {
                                             setIsDialogOpen(open);
-                                            if (open) setSelectedReqId(req.id);
+                                            if (open) {
+                                                setSelectedReqId(req.id);
+                                                setDocumentUrl("");
+                                                setResponseText("");
+                                            }
                                         }}>
                                             <DialogTrigger asChild>
                                                 <Button size="sm" className="gap-2">
@@ -95,11 +143,32 @@ export default function StudentHelpResponse() {
                                                 </DialogHeader>
                                                 <div className="py-4">
                                                     <Textarea
-                                                        placeholder="Type your response here or paste a link to the document..."
+                                                        placeholder="Type your response here..."
                                                         value={responseText}
                                                         onChange={(e) => setResponseText(e.target.value)}
                                                         rows={5}
                                                     />
+                                                    <div className="mt-4">
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className="text-sm font-medium">Attach Document (Optional)</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="relative flex-1">
+                                                                <input
+                                                                    type="file"
+                                                                    onChange={handleFileChange}
+                                                                    disabled={uploading}
+                                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                />
+                                                            </div>
+                                                            {uploading && <Loader2 className="animate-spin h-5 w-5 text-blue-600" />}
+                                                        </div>
+                                                        {documentUrl && !uploading && (
+                                                            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                                                <Check className="w-3 h-3" /> File attached successfully
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <DialogFooter>
                                                     <Button onClick={handleRespond} className="bg-blue-600">Send Response</Button>
@@ -108,9 +177,21 @@ export default function StudentHelpResponse() {
                                         </Dialog>
                                     ) : (
                                         <div className="border-t pt-3 mt-2">
-                                            <p className="text-xs text-muted-foreground italic">
-                                                You responded on {req.responseTimestamp ? new Date(req.responseTimestamp).toLocaleDateString() : ""}: "{req.studentResponse}"
-                                            </p>
+                                            <div className="text-xs text-muted-foreground italic">
+                                                <span className="block mb-1">You responded on {req.responseTimestamp ? new Date(req.responseTimestamp).toLocaleDateString() : ""}:</span>
+                                                {req.studentResponse && <span className="block mb-1">"{req.studentResponse}"</span>}
+                                                {req.responseDocumentUrl && (
+                                                    <a
+                                                        href={req.responseDocumentUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-600 hover:underline flex items-center gap-1 mt-1 not-italic"
+                                                    >
+                                                        <FileText className="w-3 h-3" />
+                                                        View Attached Document <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
                                 </CardContent>

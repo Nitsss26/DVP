@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FloatingChatbot } from "@/components/FloatingChatbot";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -86,6 +87,7 @@ const App = () => (
         </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
+    <FloatingChatbot />
   </QueryClientProvider>
 );
 

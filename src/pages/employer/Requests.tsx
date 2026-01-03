@@ -13,7 +13,12 @@ import { formatDateWithOffset } from "@/lib/utils";
 export default function EmployerRequests() {
     const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState("all");
-    const { requests: allRequests } = useVerificationStore();
+    const { requests: allRequests, fetchRequests } = useVerificationStore();
+
+    // Fetch requests from backend on mount
+    useEffect(() => {
+        fetchRequests();
+    }, [fetchRequests]);
 
     // Filter requests for the current employer
     const myRequests = currentUser

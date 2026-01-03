@@ -1,19 +1,20 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 export type UserRole = 'employer' | 'student' | 'university';
 
 export interface AccessRequest {
-    id: string;
+    _id?: string;  // MongoDB ID
+    id?: string;   // Alias for compatibility
     employerId: string;
     employerName: string;
     employerEmail?: string;
     purpose: string;
+    documentUrl?: string;
     studentEnrlNo: string;
     studentName: string;
-    requestedFields: string[]; // What they asked for
-    approvedFields: string[];  // What student actually gave
+    requestedFields: string[];
+    approvedFields: string[];
     status: RequestStatus;
     timestamp: string;
 }
@@ -21,112 +22,156 @@ export interface AccessRequest {
 interface VerificationState {
     currentUserRole: UserRole;
     requests: AccessRequest[];
+    isLoading: boolean;
 
     // Actions
     setRole: (role: UserRole) => void;
-    requestAccess: (req: Omit<AccessRequest, 'id' | 'status' | 'timestamp' | 'approvedFields'>) => void;
-    approveRequest: (requestId: string, selectedFields: string[]) => void;
-    updateApprovedFields: (requestId: string, newFields: string[]) => void;
-    rejectRequest: (requestId: string) => void;
-    revokeAccess: (requestId: string) => void;
+    fetchRequests: (filter?: { employerId?: string; studentEnrlNo?: string }) => Promise<void>;
+    requestAccess: (req: Omit<AccessRequest, '_id' | 'id' | 'status' | 'timestamp' | 'approvedFields'>) => Promise<void>;
+    approveRequest: (requestId: string, selectedFields: string[]) => Promise<void>;
+    updateApprovedFields: (requestId: string, newFields: string[]) => Promise<void>;
+    rejectRequest: (requestId: string) => Promise<void>;
+    revokeAccess: (requestId: string) => Promise<void>;
     getRequestsForStudent: (enrlNo: string) => AccessRequest[];
     getRequestsForEmployer: () => AccessRequest[];
-    syncFromStorage: () => void; // New: manual sync from localStorage
 }
 
-const STORAGE_KEY = 'verification-store';
+const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
 
-export const useVerificationStore = create<VerificationState>()(
-    persist(
-        (set, get) => ({
-            currentUserRole: 'employer',
-            requests: [],
+export const useVerificationStore = create<VerificationState>()((set, get) => ({
+    currentUserRole: 'employer',
+    requests: [],
+    isLoading: false,
 
-            setRole: (role) => set({ currentUserRole: role }),
+    setRole: (role) => set({ currentUserRole: role }),
 
-            requestAccess: (reqData) => {
-                const newRequest: AccessRequest = {
-                    id: Math.random().toString(36).substring(7),
-                    ...reqData,
-                    approvedFields: [], // Initially none
-                    status: 'pending',
-                    timestamp: new Date().toISOString(),
-                };
-                set((state) => ({ requests: [newRequest, ...state.requests] }));
-            },
+    // Fetch requests from API
+    fetchRequests: async (filter) => {
+        set({ isLoading: true });
+        try {
+            let url = '/api/requests';
+            const params = new URLSearchParams();
+            if (filter?.employerId) params.append('employerId', filter.employerId);
+            if (filter?.studentEnrlNo) params.append('studentEnrlNo', filter.studentEnrlNo);
+            if (params.toString()) url += `?${params.toString()}`;
 
-            approveRequest: (requestId, selectedFields) => {
-                set((state) => ({
-                    requests: state.requests.map((req) =>
-                        req.id === requestId ? { ...req, status: 'approved', approvedFields: selectedFields } : req
-                    ),
-                }));
-            },
+            const res = await fetch(url, { headers: getAuthHeader() });
+            const data = await res.json();
 
-            updateApprovedFields: (requestId, newFields) => {
-                set((state) => ({
-                    requests: state.requests.map((req) =>
-                        req.id === requestId ? { ...req, approvedFields: newFields } : req
-                    ),
-                }));
-            },
-
-            rejectRequest: (requestId) => {
-                set((state) => ({
-                    requests: state.requests.map((req) =>
-                        req.id === requestId ? { ...req, status: 'rejected' } : req
-                    ),
-                }));
-            },
-
-            revokeAccess: (requestId) => {
-                set((state) => ({
-                    requests: state.requests.filter(req => req.id !== requestId)
-                }));
-            },
-
-            getRequestsForStudent: (enrlNo) => {
-                return get().requests.filter(req => req.studentEnrlNo.toLowerCase() === enrlNo.toLowerCase());
-            },
-
-            getRequestsForEmployer: () => {
-                return get().requests;
-            },
-
-            // Sync state from localStorage (used for cross-tab sync)
-            syncFromStorage: () => {
-                try {
-                    const stored = localStorage.getItem(STORAGE_KEY);
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        if (parsed?.state?.requests) {
-                            set({ requests: parsed.state.requests });
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to sync from storage:', e);
-                }
-            }
-        }),
-        {
-            name: STORAGE_KEY,
+            // Map _id to id for frontend compatibility
+            const mapped = data.map((r: any) => ({ ...r, id: r._id }));
+            set({ requests: mapped });
+        } catch (error) {
+            console.error('Failed to fetch requests:', error);
+        } finally {
+            set({ isLoading: false });
         }
-    )
-);
+    },
 
-// Cross-tab synchronization using storage event
-if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (event) => {
-        if (event.key === STORAGE_KEY && event.newValue) {
-            // Another tab updated the store, sync our state
-            useVerificationStore.getState().syncFromStorage();
+    // Create new request via API
+    requestAccess: async (reqData) => {
+        try {
+            const res = await fetch('/api/requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify(reqData)
+            });
+            const newRequest = await res.json();
+            set((state) => ({
+                requests: [{ ...newRequest, id: newRequest._id }, ...state.requests]
+            }));
+        } catch (error) {
+            console.error('Failed to create request:', error);
+            throw error;
         }
-    });
+    },
 
-    // Also check for updates when the tab becomes visible (handles some edge cases)
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            useVerificationStore.getState().syncFromStorage();
+    // Approve request via API
+    approveRequest: async (requestId, selectedFields) => {
+        try {
+            const res = await fetch(`/api/requests/${requestId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ status: 'approved', approvedFields: selectedFields })
+            });
+            const updated = await res.json();
+            set((state) => ({
+                requests: state.requests.map((req) =>
+                    (req._id === requestId || req.id === requestId)
+                        ? { ...updated, id: updated._id }
+                        : req
+                ),
+            }));
+        } catch (error) {
+            console.error('Failed to approve request:', error);
         }
-    });
-}
+    },
+
+    // Update approved fields
+    updateApprovedFields: async (requestId, newFields) => {
+        try {
+            const res = await fetch(`/api/requests/${requestId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ approvedFields: newFields })
+            });
+            const updated = await res.json();
+            set((state) => ({
+                requests: state.requests.map((req) =>
+                    (req._id === requestId || req.id === requestId)
+                        ? { ...updated, id: updated._id }
+                        : req
+                ),
+            }));
+        } catch (error) {
+            console.error('Failed to update fields:', error);
+        }
+    },
+
+    // Reject request via API
+    rejectRequest: async (requestId) => {
+        try {
+            await fetch(`/api/requests/${requestId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+                body: JSON.stringify({ status: 'rejected' })
+            });
+            set((state) => ({
+                requests: state.requests.map((req) =>
+                    (req._id === requestId || req.id === requestId)
+                        ? { ...req, status: 'rejected' }
+                        : req
+                ),
+            }));
+        } catch (error) {
+            console.error('Failed to reject request:', error);
+        }
+    },
+
+    // Revoke/Delete request via API
+    revokeAccess: async (requestId) => {
+        try {
+            await fetch(`/api/requests/${requestId}`, {
+                method: 'DELETE',
+                headers: getAuthHeader()
+            });
+            set((state) => ({
+                requests: state.requests.filter(req => req._id !== requestId && req.id !== requestId)
+            }));
+        } catch (error) {
+            console.error('Failed to revoke access:', error);
+        }
+    },
+
+    getRequestsForStudent: (enrlNo) => {
+        return get().requests.filter(req => req.studentEnrlNo?.toLowerCase() === enrlNo?.toLowerCase());
+    },
+
+    getRequestsForEmployer: () => {
+        return get().requests;
+    },
+}));
+

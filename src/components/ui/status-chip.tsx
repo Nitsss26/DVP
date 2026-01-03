@@ -10,7 +10,7 @@ interface StatusChipProps {
 
 const statusConfig = {
     valid: {
-        label: "Valid",
+        label: "Verified",
         icon: CheckCircle2,
         className: "bg-success/10 text-success border-success/20",
     },

@@ -5,16 +5,26 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVerificationStore } from "@/stores/useVerificationStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StudentApprovalModal } from "@/components/verification/StudentApprovalModal";
 import { AlertTriangle, Key, Building, Calendar, Clock, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
 export default function StudentGrants() {
-    const { requests, revokeAccess, rejectRequest, updateApprovedFields } = useVerificationStore();
+    const { requests, revokeAccess, rejectRequest, updateApprovedFields, fetchRequests } = useVerificationStore();
     const { currentUser } = useAuth();
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
+
+    // Fetch requests from backend on mount
+    useEffect(() => {
+        if (currentUser?.enrollmentNo) {
+            fetchRequests({ studentEnrlNo: currentUser.enrollmentNo });
+        } else {
+            fetchRequests();
+        }
+    }, [currentUser?.enrollmentNo, fetchRequests]);
+
     const safeRequests = requests || [];
 
     // Filter requests for the logged-in student

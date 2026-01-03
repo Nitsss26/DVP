@@ -7,12 +7,17 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Shield, Clock, User, Building, Search, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function AccessLogs() {
-    const { requests } = useVerificationStore();
+    const { requests, fetchRequests } = useVerificationStore();
     const safeRequests = requests || [];
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Fetch requests from backend on mount
+    useEffect(() => {
+        fetchRequests();
+    }, [fetchRequests]);
 
     const filteredRequests = safeRequests.filter(r =>
         r.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||

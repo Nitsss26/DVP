@@ -28,7 +28,7 @@ export default function GrantAccessPage() {
     const [designation, setDesignation] = useState("");
     const [password, setPassword] = useState(""); // In a real app, this might be auto-generated or handled via invite
 
-    const handleGrant = (e: React.FormEvent) => {
+    const handleGrant = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email || !name || !designation || !password) {
             toast({
@@ -39,24 +39,32 @@ export default function GrantAccessPage() {
             return;
         }
 
-        // Mock API call simulation
-        grantAccess(email);
+        try {
+            // API call via Context
+            await grantAccess({ name, email, designation, password });
 
-        toast({
-            title: "Access Granted",
-            description: `Access granted to ${name} (${email}).`,
-        });
+            toast({
+                title: "Access Granted",
+                description: `Access granted to ${name} (${email}).`,
+            });
 
-        // Reset form
-        setName("");
-        setEmail("");
-        setDesignation("");
-        setPassword("");
+            // Reset form
+            setName("");
+            setEmail("");
+            setDesignation("");
+            setPassword("");
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to grant access.",
+                variant: "destructive"
+            });
+        }
     };
 
-    const handleRevoke = (emailToRevoke: string) => {
+    const handleRevoke = async (emailToRevoke: string) => {
         if (confirm(`Are you sure you want to revoke access for ${emailToRevoke}?`)) {
-            revokeAccess(emailToRevoke);
+            await revokeAccess(emailToRevoke);
             toast({
                 title: "Access Revoked",
                 description: `Access for ${emailToRevoke} has been revoked.`,
@@ -93,7 +101,7 @@ export default function GrantAccessPage() {
                                         <Label htmlFor="name">Full Name</Label>
                                         <Input
                                             id="name"
-                                            placeholder="e.g. Dr. Jane Doe"
+                                            placeholder="e.g. Dr. Deepak"
                                             value={name}
                                             onChange={(e) => setName(e.target.value)}
                                         />
@@ -168,20 +176,20 @@ export default function GrantAccessPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {grantedEmails.length > 0 ? (
-                                            grantedEmails.map((grantedEmail, index) => (
+                                            grantedEmails.map((user: any, index) => (
                                                 <TableRow key={index} className="hover:bg-slate-50/50">
                                                     <TableCell className="pl-6 py-4">
                                                         <div className="flex flex-col">
                                                             <span className="font-medium text-slate-900">
-                                                                {/* Mock name mapping since context only stores emails */}
-                                                                {grantedEmail.split('@')[0].replace('.', ' ')}
+                                                                {user.name}
                                                             </span>
-                                                            <span className="text-sm text-slate-500">{grantedEmail}</span>
+                                                            <span className="text-sm text-slate-500">{user.email}</span>
+                                                            {user.designation && <span className="text-xs text-slate-400">{user.designation}</span>}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-normal">
-                                                            Institute Staff
+                                                            {user.role === 'institute' ? 'Institute Staff' : user.role}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell>
@@ -194,7 +202,7 @@ export default function GrantAccessPage() {
                                                             variant="ghost"
                                                             size="icon"
                                                             className="text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                                            onClick={() => handleRevoke(grantedEmail)}
+                                                            onClick={() => handleRevoke(user.email)}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>

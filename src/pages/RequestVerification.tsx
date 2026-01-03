@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Send } from "lucide-react";
+import { FileText, Send, Loader2, UploadCloud } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -26,6 +26,8 @@ export default function RequestVerification() {
     credentialId: "",
     requestedFields: [] as string[],
   });
+  const [documentUrl, setDocumentUrl] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   // Pre-fill form from URL parameters or Auth Context
   useEffect(() => {
@@ -46,6 +48,42 @@ export default function RequestVerification() {
         ? [...prev.requestedFields, fieldId]
         : prev.requestedFields.filter(id => id !== fieldId)
     }));
+  };
+
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    uploadData.append('upload_preset', 'DVP-Storage'); // Unsigned preset
+
+    try {
+      const res = await fetch('https://api.cloudinary.com/v1_1/dwaepohvf/auto/upload', {
+        method: 'POST',
+        body: uploadData
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        let url = data.secure_url;
+        // If it's a PDF, force attachment flag to ensure it opens/downloads correctly
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          url = url.replace('/upload/', '/upload/fl_attachment/');
+        }
+        setDocumentUrl(url);
+        // removed success toast as per user request
+      } else {
+        toast.error(data.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Upload failed");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -77,6 +115,7 @@ export default function RequestVerification() {
       studentEnrlNo: formData.credentialId,
       studentName: searchParams.get('studentName') || "Candidate", // Best effort name
       requestedFields: mappedFields.length > 0 ? mappedFields : ["Basic Verification"],
+      documentUrl
     });
 
     // Show success message
@@ -92,6 +131,7 @@ export default function RequestVerification() {
       credentialId: "",
       requestedFields: [],
     });
+    setDocumentUrl('');
 
     // Clear URL parameters
     setSearchParams({});
@@ -174,6 +214,30 @@ export default function RequestVerification() {
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Document/Proof Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="document" className="text-base font-semibold">
+                  Proof of Consent / Authorization Document
+                </Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1">
+                    <Input
+                      id="document"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="cursor-pointer"
+                      disabled={uploading}
+                    />
+                  </div>
+                  {uploading && <Loader2 className="animate-spin text-blue-600 h-6 w-6" />}
+                  {documentUrl && !uploading && <div className="text-green-600 text-sm font-medium">✓ Uploaded</div>}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Upload a signed consent form or authorization letter (PDF/Image)
+                </p>
               </div>
 
               {/* Credential ID */}

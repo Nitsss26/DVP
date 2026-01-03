@@ -10,38 +10,14 @@ import { StatusChip } from "@/components/ui/status-chip";
 import { VerificationBadge } from "@/components/ui/verification-badge";
 import { Progress } from "@/components/ui/progress";
 import { Search, FileSearch, Clock, AlertCircle, Plus, Award, ExternalLink } from "lucide-react";
-
-interface SharedCredential {
-  id: string;
-  studentName: string;
-  degree: string;
-  university: string;
-  status: "valid" | "revoked" | "expired";
-  verifiedOn: string;
-}
-
-const mockCredentials: SharedCredential[] = [
-  {
-    id: "cred-001",
-    studentName: "Rajesh Kumar",
-    degree: "B.E. Computer Science",
-    university: "Govt Eng. College, Bhopal",
-    status: "valid",
-    verifiedOn: "Oct 8, 2025",
-  },
-  {
-    id: "cred-002",
-    studentName: "Priya Sharma",
-    degree: "M.Tech Information Technology",
-    university: "IIT Delhi",
-    status: "valid",
-    verifiedOn: "Oct 10, 2025",
-  },
-];
+import { useVerificationStore } from "@/stores/useVerificationStore";
+import { useAuth } from "@/context/AuthContext";
 
 export default function EmployerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { requests, fetchRequests } = useVerificationStore();
   const [employerInfo, setEmployerInfo] = useState<{
     companyName: string;
     verified: boolean;
@@ -50,32 +26,53 @@ export default function EmployerDashboard() {
   } | null>(null);
 
   useEffect(() => {
-    // Load employer info from localStorage
-    const stored = localStorage.getItem("employerInfo");
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      setEmployerInfo({
-        companyName: parsed.companyName || "Your Company",
-        verified: parsed.verified || false,
-        requestsUsed: parsed.requestsUsed || 2,
-        requestsLimit: 3,
-      });
-    } else {
-      // Default non-verified employer
-      setEmployerInfo({
-        companyName: "Your Company",
-        verified: false,
-        requestsUsed: 2,
-        requestsLimit: 3,
-      });
-    }
-  }, []);
+    // Fetch requests for this employer
+    fetchRequests();
 
-  const filteredCredentials = mockCredentials.filter(
-    (cred) =>
-      cred.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cred.degree.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cred.university.toLowerCase().includes(searchQuery.toLowerCase())
+    // Fetch employer dashboard info from backend
+    const fetchDashboard = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/employer/dashboard', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setEmployerInfo({
+            companyName: data.companyName || currentUser?.companyName || "Your Company",
+            verified: data.isVerified || false,
+            requestsUsed: data.requestsUsed || 0,
+            requestsLimit: data.requestsLimit || 3,
+          });
+        } else {
+          // Fallback to current user info
+          setEmployerInfo({
+            companyName: currentUser?.companyName || "Your Company",
+            verified: false,
+            requestsUsed: requests.length,
+            requestsLimit: 3,
+          });
+        }
+      } catch (error) {
+        // Fallback
+        setEmployerInfo({
+          companyName: currentUser?.companyName || "Your Company",
+          verified: false,
+          requestsUsed: requests.length,
+          requestsLimit: 3,
+        });
+      }
+    };
+    fetchDashboard();
+  }, [fetchRequests, currentUser?.companyName, requests.length]);
+
+  // Use approved requests as "Shared Credentials"
+  const approvedRequests = requests.filter(r => r.status === 'approved');
+
+  const filteredCredentials = approvedRequests.filter(
+    (req) =>
+      req.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      req.studentEnrlNo?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (!employerInfo) {
@@ -152,8 +149,8 @@ export default function EmployerDashboard() {
                       {employerInfo.requestsUsed} / {employerInfo.requestsLimit}
                     </span>
                   </div>
-                  <Progress 
-                    value={(employerInfo.requestsUsed / employerInfo.requestsLimit) * 100} 
+                  <Progress
+                    value={(employerInfo.requestsUsed / employerInfo.requestsLimit) * 100}
                     className="h-2"
                   />
                   {employerInfo.requestsUsed >= employerInfo.requestsLimit && (
@@ -193,38 +190,38 @@ export default function EmployerDashboard() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Student Name</TableHead>
-                        <TableHead>Degree</TableHead>
+                        <TableHead>Enrollment No</TableHead>
                         <TableHead>University</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Verified On</TableHead>
+                        <TableHead>Date</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredCredentials.map((credential) => (
                         <TableRow
-                          key={credential.id}
+                          key={credential._id || credential.id}
                           className="cursor-pointer hover:bg-accent/50"
                           onClick={() =>
-                            navigate(`/employer/verify/${credential.id}`)
+                            navigate(`/verify?enrollment=${credential.studentEnrlNo}`)
                           }
                         >
                           <TableCell className="font-medium">
                             {credential.studentName}
                           </TableCell>
-                          <TableCell>{credential.degree}</TableCell>
-                          <TableCell>{credential.university}</TableCell>
+                          <TableCell>{credential.studentEnrlNo}</TableCell>
+                          <TableCell>Barkatullah University</TableCell>
                           <TableCell>
-                            <StatusChip status={credential.status} />
+                            <StatusChip status={credential.status === 'approved' ? 'valid' : 'pending'} />
                           </TableCell>
-                          <TableCell>{credential.verifiedOn}</TableCell>
+                          <TableCell>{credential.timestamp ? new Date(credential.timestamp).toLocaleDateString() : 'Recently'}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/employer/verify/${credential.id}`);
+                                navigate(`/verify?enrollment=${credential.studentEnrlNo}`);
                               }}
                             >
                               <ExternalLink className="w-4 h-4" />

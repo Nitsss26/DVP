@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -11,21 +11,101 @@ import { Badge } from "@/components/ui/badge";
 import { useConcernStore } from "@/stores/useConcernStore";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Clock, CheckCircle2, Search } from "lucide-react";
+import { Send, Clock, CheckCircle2, Search, Loader2, User } from "lucide-react";
+
+// Student suggestion type
+interface StudentSuggestion {
+    EnrlNo: string;
+    StudentName: string;
+    College?: string;
+    Course?: string;
+}
 
 export default function EmployerHelpRequest() {
     const { toast } = useToast();
     const { currentUser } = useAuth();
-    const { createHelpRequest, getHelpRequestsForEmployer } = useConcernStore();
+    const { createHelpRequest, getHelpRequestsForEmployer, fetchHelpRequests } = useConcernStore();
+
+    // Fetch help requests from backend on mount
+    useEffect(() => {
+        fetchHelpRequests();
+    }, [fetchHelpRequests]);
 
     const employerName = currentUser?.name || "Acme Corp";
     const employerId = currentUser?.uid || "emp_default";
 
-    // All requests (mock filtered for this employer)
+    // All requests (filtered for this employer)
     const requests = getHelpRequestsForEmployer();
 
+    // Autocomplete states
     const [enrlNo, setEnrlNo] = useState("");
     const [details, setDetails] = useState("");
+    const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<StudentSuggestion | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const suggestionsRef = useRef<HTMLDivElement>(null);
+
+    // Debounced search effect
+    useEffect(() => {
+        if (enrlNo.length < 3) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/public/registry?search=${encodeURIComponent(enrlNo)}&limit=8`);
+                const data = await res.json();
+
+                if (data.students && data.students.length > 0) {
+                    const mapped: StudentSuggestion[] = data.students.map((s: any) => ({
+                        EnrlNo: s.EnrlNo || s._id,
+                        StudentName: s.Details?.Profile?.StudentName || 'Unknown',
+                        College: s.Details?.Profile?.College || '',
+                        Course: s.Details?.Profile?.Course || ''
+                    }));
+                    setSuggestions(mapped);
+                    setShowSuggestions(true);
+                } else {
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+                setSuggestions([]);
+            }
+            setIsSearching(false);
+        }, 400); // 400ms debounce
+
+        return () => clearTimeout(timer);
+    }, [enrlNo]);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                suggestionsRef.current &&
+                !suggestionsRef.current.contains(event.target as Node) &&
+                inputRef.current &&
+                !inputRef.current.contains(event.target as Node)
+            ) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelectStudent = (student: StudentSuggestion) => {
+        setEnrlNo(student.EnrlNo);
+        setSelectedStudent(student);
+        setShowSuggestions(false);
+        setSuggestions([]);
+    };
 
     const handleCreateRequest = (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,13 +118,14 @@ export default function EmployerHelpRequest() {
             employerId,
             employerName,
             studentEnrlNo: enrlNo,
-            studentName: "Student Mock", // Ideally fetch this
+            studentName: selectedStudent?.StudentName || enrlNo, // Use real name if selected
             requestDetails: details,
         });
 
-        toast({ title: "Request Sent", description: `Help request sent to student ${enrlNo}.` });
+        toast({ title: "Request Sent", description: `Help request sent to student ${selectedStudent?.StudentName || enrlNo}.` });
         setEnrlNo("");
         setDetails("");
+        setSelectedStudent(null);
     };
 
     return (
@@ -69,13 +150,60 @@ export default function EmployerHelpRequest() {
                                     <div className="space-y-2">
                                         <Label>Student Enrollment No.</Label>
                                         <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            {isSearching ? (
+                                                <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+                                            ) : (
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            )}
                                             <Input
+                                                ref={inputRef}
                                                 className="pl-9"
-                                                placeholder="e.g. R158..."
+                                                placeholder="Type to search (e.g. R158...)"
                                                 value={enrlNo}
-                                                onChange={(e) => setEnrlNo(e.target.value)}
+                                                onChange={(e) => {
+                                                    setEnrlNo(e.target.value);
+                                                    setSelectedStudent(null);
+                                                }}
+                                                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                                                autoComplete="off"
                                             />
+
+                                            {/* Suggestions Dropdown */}
+                                            {showSuggestions && suggestions.length > 0 && (
+                                                <div
+                                                    ref={suggestionsRef}
+                                                    className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+                                                >
+                                                    {suggestions.map((student, index) => (
+                                                        <button
+                                                            key={student.EnrlNo}
+                                                            type="button"
+                                                            onClick={() => handleSelectStudent(student)}
+                                                            className={`w-full text-left px-3 py-2.5 hover:bg-blue-50 flex items-start gap-3 transition-colors ${index !== suggestions.length - 1 ? 'border-b border-slate-100' : ''
+                                                                }`}
+                                                        >
+                                                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                                <User className="w-4 h-4 text-slate-500" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-medium text-slate-900 truncate">{student.StudentName}</div>
+                                                                <div className="text-xs text-blue-600 font-mono">{student.EnrlNo}</div>
+                                                                {student.College && (
+                                                                    <div className="text-xs text-slate-500 truncate mt-0.5">{student.College}</div>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Selected student indicator */}
+                                            {selectedStudent && (
+                                                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-sm">
+                                                    <span className="text-green-700">Selected: </span>
+                                                    <span className="font-medium text-green-900">{selectedStudent.StudentName}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="space-y-2">

@@ -59,12 +59,12 @@ export function StudentForm({ onSubmit, defaultValues, isEditing = false }: Stud
                     DOB: formData.DOB,
                     Gender: formData.Gender,
                     Category: formData.Category,
-                    MaritalStatus: "SINGLE", // Default
+                    MaritalStatus: formData.MaritalStatus || defaultValues?.Details?.Profile?.MaritalStatus || "SINGLE",
                     College: formData.College,
                     Course: formData.Course,
                     Batch: formData.Batch,
                     BranchCode: formData.BranchCode,
-                    FolderYear: "2023", // Default
+                    FolderYear: defaultValues?.Details?.Profile?.FolderYear || "2023",
                 }
             }
         };
@@ -110,6 +110,21 @@ export function StudentForm({ onSubmit, defaultValues, isEditing = false }: Stud
                             <SelectItem value="MALE">Male</SelectItem>
                             <SelectItem value="FEMALE">Female</SelectItem>
                             <SelectItem value="OTHER">Other</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="Category">Category</Label>
+                    <Select onValueChange={(val) => setValue("Category", val)} defaultValue={defaultValues?.Details?.Profile?.Category}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="GEN">General</SelectItem>
+                            <SelectItem value="OBC">OBC</SelectItem>
+                            <SelectItem value="SC">SC</SelectItem>
+                            <SelectItem value="ST">ST</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

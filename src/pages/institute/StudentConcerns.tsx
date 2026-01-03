@@ -6,11 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useConcernStore, DataConcern } from "@/stores/useConcernStore";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, FileText } from "lucide-react";
+import { Check, X, FileText, ExternalLink } from "lucide-react";
+import { useEffect } from "react";
 
 export default function StudentConcerns() {
     const { toast } = useToast();
-    const { concerns, resolveConcern, rejectConcern } = useConcernStore();
+    const { concerns, resolveConcern, rejectConcern, fetchConcerns } = useConcernStore();
+
+    // Fetch concerns from backend on mount
+    useEffect(() => {
+        fetchConcerns();
+    }, [fetchConcerns]);
 
     const handleAction = (id: string, action: 'resolve' | 'reject') => {
         const msg = action === 'resolve' ? "Data updated successfully." : "Proof insufficient.";
@@ -56,11 +62,34 @@ export default function StudentConcerns() {
                                         <TableCell>{concern.fieldToCorrect}</TableCell>
                                         <TableCell className="font-mono text-xs">{concern.proposedValue}</TableCell>
                                         <TableCell>
-                                            {concern.proofDocName ? (
-                                                <div className="flex items-center gap-1 text-blue-600 text-sm hover:underline cursor-pointer">
-                                                    <FileText className="w-3 h-3" /> {concern.proofDocName}
-                                                </div>
-                                            ) : <span className="text-muted-foreground text-xs">No doc</span>}
+                                            {concern.documentUrl ? (
+                                                <a
+                                                    href={concern.documentUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-1 text-blue-600 text-sm hover:underline"
+                                                    title={concern.proofDocName}
+                                                >
+                                                    <FileText className="w-3 h-3 flex-shrink-0" />
+                                                    {(() => {
+                                                        const name = concern.proofDocName || "";
+                                                        if (name.length <= 25) return name;
+                                                        const extIndex = name.lastIndexOf('.');
+                                                        if (extIndex !== -1 && name.length - extIndex < 6) {
+                                                            const ext = name.substring(extIndex);
+                                                            return name.substring(0, 15) + "..." + ext;
+                                                        }
+                                                        return name.substring(0, 20) + "...";
+                                                    })()}
+                                                    <ExternalLink className="w-3 h-3 flex-shrink-0 ml-1" />
+                                                </a>
+                                            ) : (
+                                                concern.proofDocName ? (
+                                                    <div className="flex items-center gap-1 text-slate-500 text-sm">
+                                                        <FileText className="w-3 h-3" /> {concern.proofDocName}
+                                                    </div>
+                                                ) : <span className="text-muted-foreground text-xs">No doc</span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             {concern.status === 'pending' && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Pending</Badge>}

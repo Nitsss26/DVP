@@ -73,7 +73,7 @@ export function Header() {
                             {/* STUDENT NAVIGATION */}
                             {isStudent && (
                                 <>
-                                    <Link to="/verify/R158237200015" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+                                    <Link to={`/verify/${currentUser?.enrollmentNo || ''}`} className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
                                         My Profile
                                     </Link>
                                     <Link to="/student/grants" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
@@ -132,7 +132,7 @@ export function Header() {
                                         <DropdownMenuSeparator />
 
                                         {isStudent && (
-                                            <DropdownMenuItem onClick={() => navigate('/verify/R158237200015')}>
+                                            <DropdownMenuItem onClick={() => navigate(`/verify/${currentUser?.enrollmentNo || ''}`)}>
                                                 <UserIcon className="mr-2 h-4 w-4" />
                                                 <span>My Profile</span>
                                             </DropdownMenuItem>

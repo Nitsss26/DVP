@@ -36,22 +36,93 @@ export default function Index() {
     setSearchResult(null);
     setIsVerified(false);
 
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 600));
+    try {
+      // Query MongoDB via backend API
+      const res = await fetch(`/api/public/registry?enrollment=${encodeURIComponent(enrollmentInput.trim())}`);
+      const data = await res.json();
 
-    const foundStudent = getStudent(enrollmentInput);
-    if (foundStudent) {
-      const record = get8thSemesterRecord(foundStudent);
-      if (record) {
-        setSearchResult({ student: foundStudent, record });
+      if (data.students && data.students.length > 0) {
+        const student = data.students[0];
+
+        // Backend already maps data to correct format with PascalCase
+        // Use it directly since registryController returns properly formatted data
+        const mappedStudent: StudentData = {
+          EnrlNo: student.EnrlNo || student._id,
+          Details: {
+            Profile: {
+              StudentName: student.Details?.Profile?.StudentName || 'N/A',
+              FatherName: student.Details?.Profile?.FatherName || 'N/A',
+              MotherName: student.Details?.Profile?.MotherName || 'N/A',
+              DOB: student.Details?.Profile?.DOB || 'N/A',
+              Gender: student.Details?.Profile?.Gender || 'N/A',
+              Category: student.Details?.Profile?.Category || 'N/A',
+              MaritalStatus: 'N/A',
+              College: student.Details?.Profile?.College || 'N/A',
+              Course: student.Details?.Profile?.Course || 'N/A',
+              Batch: student.Details?.Profile?.Batch || 'N/A',
+              BranchCode: student.Details?.Profile?.BranchCode || 'N/A',
+              FolderYear: student.Details?.Profile?.FolderYear || '2024'
+            },
+            Summary: {
+              TotalMarks: 0,
+              MaxMarks: 0,
+              Division: 'N/A'
+            }
+          },
+          ExamRecords: student.ExamRecords || []
+        };
+
+        // Find the highest/latest semester record
+        let bestRecord = student.ExamRecords && student.ExamRecords.length > 0 ? student.ExamRecords[0] : null;
+
+        if (student.ExamRecords && student.ExamRecords.length > 1) {
+          // Sort by academic year (descending) then by semester number (descending)
+          const sortedRecords = [...student.ExamRecords].sort((a: any, b: any) => {
+            // Compare academic years first (e.g., "2021-2022" > "2019-2020")
+            const yearA = a.AcademicYear || '';
+            const yearB = b.AcademicYear || '';
+            if (yearB > yearA) return 1;
+            if (yearA > yearB) return -1;
+
+            // If years are same, compare semester numbers
+            const getSemNum = (rec: any) => {
+              const examName = (rec.ExamName || rec.Semester || '').toUpperCase();
+              // Extract semester number: "VI" = 6, "VIII" = 8, "II" = 2, etc.
+              const romanMap: Record<string, number> = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10 };
+              for (const [roman, num] of Object.entries(romanMap).reverse()) {
+                if (examName.includes(`SEMESTER ${roman}`) || examName.includes(`SEM ${roman}`) || examName.includes(` ${roman} `)) {
+                  return num;
+                }
+              }
+              // Try numeric
+              const numMatch = examName.match(/(\d+)\s*SEM/);
+              if (numMatch) return parseInt(numMatch[1]);
+              return 0;
+            };
+            return getSemNum(b) - getSemNum(a);
+          });
+          bestRecord = sortedRecords[0];
+        }
+
+        const latestRecord = bestRecord || {
+          ExamName: 'Latest',
+          Year: student.Details?.Profile?.Batch || '2024',
+          Subjects: [],
+          Summary: { Total: 0, Max: 0, Division: 'N/A' }
+        };
+
+        setSearchResult({ student: mappedStudent, record: latestRecord });
         setIsVerified(true);
-        // Auto-scroll to results section
+
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
+      } else {
+        toast.error("No record found for this enrollment number.");
       }
-    } else {
-      toast.error("No record found for this enrollment number.");
+    } catch (error) {
+      console.error("Search error:", error);
+      toast.error("Failed to search. Please try again.");
     }
 
     setLoading(false);
@@ -106,42 +177,44 @@ export default function Index() {
               Trusted by students, employers, and institutions worldwide.
             </p>
 
-            {/* Search Box - Central Focus */}
-            <div className="max-w-2xl mx-auto mb-12 relative z-10">
-              <form onSubmit={handleSearch} className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                <div className="relative flex items-center bg-white rounded-xl shadow-2xl p-2">
-                  <Search className="w-6 h-6 text-slate-400 ml-3" />
-                  <Input
-                    type="text"
-                    placeholder="Enter Enrollment Number (e.g., R158237200015)"
-                    className="border-0 shadow-none focus-visible:ring-0 text-lg h-12 text-slate-800 placeholder:text-slate-400 flex-1"
-                    value={enrollmentInput}
-                    onChange={(e) => {
-                      setEnrollmentInput(e.target.value);
-                      setIsVerified(false);
-                    }}
-                  />
-                  {isVerified && (
-                    <div className="flex items-center justify-center mr-2 animate-in fade-in zoom-in duration-300">
-                      <div className="bg-green-100 p-1.5 rounded-full">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+            {/* Search Box - Central Focus (Hidden for Students) */}
+            {(!currentUser || currentUser.role !== 'student') && (
+              <div className="max-w-2xl mx-auto mb-12 relative z-10">
+                <form onSubmit={handleSearch} className="relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-300 to-indigo-300 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                  <div className="relative flex items-center bg-white rounded-xl shadow-2xl p-2">
+                    <Search className="w-6 h-6 text-slate-400 ml-3" />
+                    <Input
+                      type="text"
+                      placeholder="Enter Enrollment Number (e.g., R158237200015)"
+                      className="border-0 shadow-none focus-visible:ring-0 text-lg h-12 text-slate-800 placeholder:text-slate-400 flex-1"
+                      value={enrollmentInput}
+                      onChange={(e) => {
+                        setEnrollmentInput(e.target.value);
+                        setIsVerified(false);
+                      }}
+                    />
+                    {isVerified && (
+                      <div className="flex items-center justify-center mr-2 animate-in fade-in zoom-in duration-300">
+                        <div className="bg-green-100 p-1.5 rounded-full">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <Button
-                    size="lg"
-                    className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-8 h-12 rounded-lg text-base font-semibold transition-all"
-                    disabled={loading}
-                  >
-                    {loading ? "Searching..." : "Verify Now"}
-                  </Button>
-                </div>
-              </form>
-              <p className="mt-3 text-blue-200 text-sm">
-                * Enter the student's enrollment number to view their verified credential status.
-              </p>
-            </div>
+                    )}
+                    <Button
+                      size="lg"
+                      className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-8 h-12 rounded-lg text-base font-semibold transition-all"
+                      disabled={loading}
+                    >
+                      {loading ? "Searching..." : "Verify Now"}
+                    </Button>
+                  </div>
+                </form>
+                <p className="mt-3 text-blue-200 text-sm">
+                  * Enter the student's enrollment number to view their verified credential status.
+                </p>
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             {!currentUser && (
@@ -194,24 +267,33 @@ export default function Index() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 border-t border-slate-100 pt-6">
+                  {/* Top Left: Degree Program */}
                   <div>
                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Degree Program</div>
                     <div className="font-semibold text-slate-800 text-lg leading-snug">
-                      {searchResult.record.ExamName.split('(')[0]} <span className="text-slate-500 font-normal text-base">( CGPA )</span>
+                      {searchResult.record.ExamName || 'N/A'}
                     </div>
-                    <div className="text-slate-500 mt-1">{searchResult.record.ExamName.split(' ').slice(-3).join(' ')}</div>
-
-                    {/* Session Field */}
-                    <div className="mt-4">
-                      <div className="text-xs font-bold text-slate-400 uppercase mb-1">Session</div>
-                      <div className="font-medium text-slate-700">2017-2021</div>
-                    </div>
+                    <div className="text-slate-500 mt-1">{searchResult.record.Semester || searchResult.record.ExamType || ''}</div>
                   </div>
+
+                  {/* Top Right: Institution */}
                   <div>
                     <div className="text-xs font-bold text-slate-400 uppercase mb-1">Institution</div>
-                    <div className="font-semibold text-slate-800 text-lg leading-snug">{searchResult.record.College}</div>
-                    <div className="text-slate-500 mt-1">U.T.D. B.V.V. BHOPAL</div>
+                    <div className="font-semibold text-slate-800 text-lg leading-snug">{searchResult.record.College || searchResult.student.Details?.Profile?.College || 'N/A'}</div>
+                    <div className="text-slate-500 mt-1">Barkatullah University, Bhopal</div>
+                  </div>
+
+                  {/* Bottom Left: Session */}
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Session</div>
+                    <div className="font-medium text-slate-700">{searchResult.record.AcademicYear || searchResult.student.Details?.Profile?.Batch || 'N/A'}</div>
+                  </div>
+
+                  {/* Bottom Right: Roll Number */}
+                  <div>
+                    <div className="text-xs font-bold text-slate-400 uppercase mb-1">Roll Number</div>
+                    <div className="font-medium text-slate-700 font-mono">{searchResult.record.RollNo || searchResult.student.ExamRecords[0]?.RollNo || 'NOT AVAILABLE'}</div>
                   </div>
                 </div>
 

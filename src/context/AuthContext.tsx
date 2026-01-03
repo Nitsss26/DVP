@@ -1,111 +1,247 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, INSTITUTE_EMAIL, INSTITUTE_PASS } from '../types/auth';
+import { toast } from 'sonner';
+
+interface GrantAccessData {
+    name: string;
+    email: string;
+    designation: string;
+    password: string;
+}
 
 interface AuthContextType {
     currentUser: User | null;
-    login: (user: User) => void;
+    isLoading: boolean;
+    // Core Auth
+    verifyCredentials: (email: string, password: string) => Promise<{ user: User; token: string }>;
+    startSession: (user: User, token: string) => void;
+    login: (user: User) => Promise<void>; // Legacy wrapper, calls startSession internally if token present
     logout: () => void;
-    grantAccess: (email: string) => void; // Institute Only
+    // Registration
+    registerUser: (user: User) => Promise<void>;
+    // Institute Management
+    grantAccess: (data: GrantAccessData) => Promise<void>;
     isAccessGranted: (email: string) => boolean;
-    grantedEmails: string[];
-    revokeAccess: (email: string) => void;
-    registerUser: (user: User) => void;
-    findUser: (email: string) => User | undefined;
-    updateUserPassword: (email: string, newPassword: string) => void;
+    grantedEmails: User[]; // Changed to User[] objects for better UI
+    revokeAccess: (email: string) => Promise<void>;
+    // Helpers
+    findUser: (email: string) => Promise<User | undefined>;
+    updateUserPassword: (email: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY_USER = "gog_mp_user";
-const STORAGE_KEY_GRANTED = "gog_mp_granted_emails";
-const STORAGE_KEY_REGISTERED_USERS = "gog_mp_registered_users"; // Simulates DB
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [grantedEmails, setGrantedEmails] = useState<string[]>([]);
-    const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
+    const [grantedEmails, setGrantedEmails] = useState<User[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Load from LocalStorage on mount
+    // Initial Load
     useEffect(() => {
-        const storedUser = localStorage.getItem(STORAGE_KEY_USER);
-        if (storedUser) {
-            try {
-                setCurrentUser(JSON.parse(storedUser));
-            } catch (e) { console.error("Failed to parse user", e); }
-        }
+        const initializeAuth = async () => {
+            const token = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
 
-        const storedGranted = localStorage.getItem(STORAGE_KEY_GRANTED);
-        if (storedGranted) {
-            try {
-                setGrantedEmails(JSON.parse(storedGranted));
-            } catch (e) { console.error("Failed to parse granted emails", e); }
-        }
+            if (token && storedUser) {
+                try {
+                    // Optional: Verify token with backend /api/auth/me
+                    // For now, load from storage to save latency
+                    setCurrentUser(JSON.parse(storedUser));
 
-        const storedReg = localStorage.getItem(STORAGE_KEY_REGISTERED_USERS);
-        if (storedReg) {
-            try {
-                setRegisteredUsers(JSON.parse(storedReg));
-            } catch (e) { console.error("Failed to parse registered users", e); }
-        }
+                    // If institute, fetch staff list
+                    const parsedUser = JSON.parse(storedUser);
+                    if (parsedUser.role === 'institute') {
+                        fetchStaffList(token);
+                    }
+                } catch (e) {
+                    console.error("Auth init error", e);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                }
+            }
+            setIsLoading(false);
+        };
+
+        initializeAuth();
     }, []);
 
-    const login = (user: User) => {
+    const fetchStaffList = async (token: string) => {
+        try {
+            const res = await fetch('/api/institute/staff', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setGrantedEmails(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch staff list", error);
+        }
+    };
+
+    // 1. Verify Credentials (API Call)
+    const verifyCredentials = async (email: string, password: string): Promise<{ user: User; token: string }> => {
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Login failed');
+            }
+
+            return { user: data, token: data.token };
+        } catch (error: any) {
+            console.error("Verify Credentials Error:", error);
+            throw error;
+        }
+    };
+
+    // 2. Start Session (Save to State & Storage)
+    const startSession = (user: User, token: string) => {
         setCurrentUser(user);
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(user));
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        if (user.role === 'institute') {
+            fetchStaffList(token);
+        }
+    };
+
+    // Legacy Login Wrapper (adopts to components calling login(userObject))
+    // We assume if a component calls this, it has already verified credentials or is doing a mock login.
+    // However, to enforce backend, components should use verifyCredentials -> startSession.
+    // For backward compatibility, if the passed user object has a token, we handle it.
+    const login = async (user: User) => {
+        // If the user object passed has a token (from backend response in Login page), use it.
+        // But the User interface in simple auth.ts might not have token.
+        // Only verifyCredentials returns token.
+        // We will assume the caller handles startSession. 
+        // This function is kept to satisfy interface but usually caller will use startSession logic.
+        // If we strictly follow types, we might need to cast.
+
+        // Use a dummy token if none provided (Fallback for magic accounts if backend didn't return one? Backend ALWAYS returns one now)
+        // Check Login.tsx: it calls login(userToLogin). 
+        // We will modify Login.tsx to call startSession instead.
+        // So this function might become no-op or specific to purely frontend mock updates if any remain.
+        console.warn("Legacy login() called. Prefer startSession().");
+        setCurrentUser(user);
+        // We don't have token here so we can't persist effectively for API calls.
+        // User MUST update Login.tsx.
     };
 
     const logout = () => {
         setCurrentUser(null);
-        localStorage.removeItem(STORAGE_KEY_USER);
-        window.location.href = "/"; // Force redirect to home
+        setGrantedEmails([]);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = "/";
     };
 
-    const grantAccess = (email: string) => {
-        if (grantedEmails.includes(email)) return;
-        const updated = [...grantedEmails, email];
-        setGrantedEmails(updated);
-        localStorage.setItem(STORAGE_KEY_GRANTED, JSON.stringify(updated));
+    // Registration (API Call)
+    const registerUser = async (user: User) => {
+        try {
+            // Map frontend User fields to Backend expected fields
+            const payload = {
+                ...user,
+                // Ensure field names match backend expectations
+                // Backend: enrollmentNo, dob, companyName, designation
+                // Frontend: same
+            };
+
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || 'Registration failed');
+            }
+            return;
+        } catch (error: any) {
+            console.error("Registration Error:", error);
+            throw error;
+        }
     };
 
-    const revokeAccess = (email: string) => {
-        const updated = grantedEmails.filter(e => e !== email);
-        setGrantedEmails(updated);
-        localStorage.setItem(STORAGE_KEY_GRANTED, JSON.stringify(updated));
+    // Institute: Grant Access (Create Staff User)
+    const grantAccess = async (data: GrantAccessData) => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch('/api/institute/staff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to grant access');
+            }
+            // Refresh list
+            if (token) fetchStaffList(token);
+
+        } catch (error: any) {
+            console.error("Grant Access Error:", error);
+            throw error;
+        }
+    };
+
+    const revokeAccess = async (email: string) => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`/api/institute/staff/${email}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Failed to revoke access');
+            }
+            if (token) fetchStaffList(token);
+        } catch (error: any) {
+            console.error("Revoke Access Error:", error);
+            toast.error(error.message);
+        }
     };
 
     const isAccessGranted = (email: string) => {
-        return grantedEmails.includes(email);
+        return grantedEmails.some(u => u.email === email);
     };
 
-    // Helper to simulate "Signing Up" - saving to "DB"
-    const registerUser = (user: User) => {
-        const updated = [...registeredUsers, user];
-        setRegisteredUsers(updated);
-        localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
-        // Don't auto-login, redirect to login page instead
+    // Helper: Find User (Mock -> API?)
+    // This was used in Login.tsx to "check if user exists" locally.
+    // With backend, we login to check. logic. 
+    // We'll return undefined to force login flow.
+    const findUser = async (email: string): Promise<User | undefined> => {
+        // Not implemented on backend to allow public user search (security risk).
+        // Login.tsx should rely on verifyCredentials throwing error instead.
+        return undefined;
     };
 
-    // Helper to find user in "DB"
-    const findUser = (email: string): User | undefined => {
-        // Mock Institute user is not in "DB", handled separately in Login page
-        return registeredUsers.find(u => u.email === email);
-    };
-
-    // Update user password (for forgot password flow)
-    const updateUserPassword = (email: string, newPassword: string) => {
-        const updated = registeredUsers.map(user => {
-            if (user.email === email) {
-                return { ...user, password: newPassword };
-            }
-            return user;
-        });
-        setRegisteredUsers(updated);
-        localStorage.setItem(STORAGE_KEY_REGISTERED_USERS, JSON.stringify(updated));
+    // Helper: Update Password
+    const updateUserPassword = async (email: string, newPass: string) => {
+        // Implement forgot password API if exists, or mock success
+        // Backend doesn't have forgot-password endpoint yet.
+        await new Promise(r => setTimeout(r, 1000));
+        // toast.success("Password updated (Mock)");
     };
 
     return (
         <AuthContext.Provider value={{
             currentUser,
+            isLoading,
+            verifyCredentials,
+            startSession,
             login,
             logout,
             grantAccess,

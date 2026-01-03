@@ -6,13 +6,15 @@ export interface User {
     name: string;
     role: UserRole;
     phone?: string;
-    password?: string; // User-created password during signup
+    password?: string;
     // Employer specifics
     companyName?: string;
     designation?: string;
     // Student specifics
     enrollmentNo?: string;
-    dob?: string; // YYYY-MM-DD
+    dob?: string;
+    // Account metadata
+    createdAt?: string;
 }
 
 export interface AuthState {

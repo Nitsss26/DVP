@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, isAccessGranted, findUser } = useAuth();
+    const { login, verifyCredentials, startSession } = useAuth(); // Added methods
 
     const [loginRole, setLoginRole] = useState<'student' | 'employer'>('student');
     const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +21,9 @@ const Login = () => {
     const [password, setPassword] = useState("");
     const [otp, setOtp] = useState("");
     const [showOtp, setShowOtp] = useState(false);
+
+    // Temp storage for 2FA flow
+    const [tempAuth, setTempAuth] = useState<{ user: User, token: string } | null>(null);
 
     // Effect to set initial role from location state
     React.useEffect(() => {
@@ -35,129 +38,87 @@ const Login = () => {
         e.preventDefault();
         setIsLoading(true);
 
-        await new Promise(r => setTimeout(r, 600));
+        try {
+            // Call Backend
+            const { user, token } = await verifyCredentials(email, password);
 
-        let userToLogin: User | null = null;
-        let isCredentialValid = false;
-
-        // A. Check Demo/Magic Accounts
-        if (password === "123456") {
-            if (email === 'student@gog.com' && loginRole === 'student') {
-                userToLogin = {
-                    uid: 'demo_student_static_id',
-                    email: email,
-                    name: 'Pushpendra Kumar Banshkar',
-                    role: 'student',
-                    enrollmentNo: 'R158237200015',
-                    dob: '1993-08-01'
-                };
-                isCredentialValid = true;
-            } else if (email === 'employer@gog.com' && loginRole === 'employer') {
-                userToLogin = {
-                    uid: 'demo_employer_static_id',
-                    email: email,
-                    name: 'Rajesh Kumar',
-                    role: 'employer',
-                    phone: '+91 98765 43210',
-                    companyName: 'Tata Consultancy Services',
-                    designation: 'Senior HR Manager'
-                };
-                isCredentialValid = true;
+            // Check Role Mismatch
+            if (user.role !== loginRole) {
+                toast.error(`Account found but it is a ${user.role}. Please switch tabs.`);
+                setIsLoading(false);
+                return;
             }
-        }
 
-        // B. Check Registered Users
-        if (!isCredentialValid) {
-            const foundUser = findUser(email);
-            if (foundUser && foundUser.role === loginRole) {
-                const userPassword = foundUser.password || "123456";
-                if (password === userPassword) {
-                    userToLogin = foundUser;
-                    isCredentialValid = true;
-                }
-            }
-        }
+            // Success
+            startSession(user, token);
+            toast.success(`Welcome back, ${user.name}!`);
 
-        // Handle result
-        if (!isCredentialValid) {
-            const existingUser = findUser(email);
-            if (existingUser && existingUser.role !== loginRole) {
-                toast.error(`Account found but it is a ${existingUser.role}. Please switch tabs.`);
-            } else {
-                toast.error("Invalid credentials. Please check your email and password.");
-            }
-            setIsLoading(false);
-            return;
-        }
-
-        // Direct Login - No OTP needed for Student/Employer
-        if (userToLogin) {
-            login(userToLogin);
-            toast.success(`Welcome back, ${userToLogin.name}!`);
-            if (userToLogin.role === 'student') {
-                navigate(`/verify/${userToLogin.enrollmentNo || 'R158237200015'}`);
+            if (user.role === 'student') {
+                navigate(`/verify/${user.enrollmentNo || 'R158237200015'}`);
             } else {
                 navigate('/employer/requests');
             }
+
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || "Invalid credentials. Please check your email and password.");
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     };
 
     // Institute Login Handler (with OTP for granted users)
     const handleInstituteLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        await new Promise(r => setTimeout(r, 600));
 
-        // 1. Root Admin Login (Direct)
-        if (email === INSTITUTE_EMAIL && password === INSTITUTE_PASS && !showOtp) {
-            login({
-                uid: 'inst_admin',
-                email: email,
-                name: 'Controller of Exams',
-                role: 'institute'
-            });
-            toast.success("Welcome, Controller of Exams!");
-            navigate('/university/dashboard');
+        // 1. If OTP is already shown, verify OTP
+        if (showOtp) {
+            if (otp === "123456") {
+                if (tempAuth) {
+                    startSession(tempAuth.user, tempAuth.token);
+                    toast.success("Access Granted! Welcome.");
+                    navigate('/university/dashboard');
+                } else {
+                    toast.error("Session expired. Please login again.");
+                    setShowOtp(false);
+                }
+            } else {
+                toast.error("Invalid OTP.");
+            }
             setIsLoading(false);
             return;
         }
 
-        // 2. Granted Access Login (With OTP)
-        if (isAccessGranted(email)) {
-            if (!showOtp) {
-                if (password === "123456") {
-                    setShowOtp(true);
-                    toast.info("Password verified. Please enter OTP sent to your email.");
-                    setIsLoading(false);
-                    return;
-                } else {
-                    toast.error("Invalid credentials.");
-                    setIsLoading(false);
-                    return;
-                }
-            } else {
-                if (otp === "123456") {
-                    login({
-                        uid: `staff_${Date.now()}`,
-                        email: email,
-                        name: 'Institute Staff Member',
-                        role: 'institute'
-                    });
-                    toast.success("Access Granted! Welcome.");
-                    navigate('/university/dashboard');
-                    setIsLoading(false);
-                    return;
-                } else {
-                    toast.error("Invalid OTP.");
-                    setIsLoading(false);
-                    return;
-                }
-            }
-        }
+        // 2. Initial Login (Verify Credentials)
+        try {
+            // Verify Password & Email on Backend
+            const { user, token } = await verifyCredentials(email, password);
 
-        toast.error("Invalid Institute Credentials or Access Not Granted.");
-        setIsLoading(false);
+            if (user.role !== 'institute') {
+                toast.error("Access Denied. This account is not an Institute account.");
+                setIsLoading(false);
+                return;
+            }
+
+            // Root Admin - Direct Access
+            if (email === INSTITUTE_EMAIL) {
+                startSession(user, token);
+                toast.success("Welcome, Controller of Exams!");
+                navigate('/university/dashboard');
+                return;
+            }
+
+            // Staff - Show OTP
+            setTempAuth({ user, token }); // Store for step 2
+            setShowOtp(true);
+            toast.info("Password verified. Please enter OTP sent to your email.");
+
+        } catch (error: any) {
+            toast.error(error.message || "Invalid Institute Credentials.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
