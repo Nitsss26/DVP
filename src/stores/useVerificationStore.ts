@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { API_BASE_URL } from "@/config";
+
 
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 export type UserRole = 'employer' | 'student' | 'university';
@@ -52,7 +54,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     fetchRequests: async (filter) => {
         set({ isLoading: true });
         try {
-            let url = '/api/requests';
+            let url = `${API_BASE_URL}/api/requests`;
             const params = new URLSearchParams();
             if (filter?.employerId) params.append('employerId', filter.employerId);
             if (filter?.studentEnrlNo) params.append('studentEnrlNo', filter.studentEnrlNo);
@@ -74,7 +76,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     // Create new request via API
     requestAccess: async (reqData) => {
         try {
-            const res = await fetch('/api/requests', {
+            const res = await fetch(`${API_BASE_URL}/api/requests`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify(reqData)
@@ -92,7 +94,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     // Approve request via API
     approveRequest: async (requestId, selectedFields) => {
         try {
-            const res = await fetch(`/api/requests/${requestId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/requests/${requestId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ status: 'approved', approvedFields: selectedFields })
@@ -113,7 +115,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     // Update approved fields
     updateApprovedFields: async (requestId, newFields) => {
         try {
-            const res = await fetch(`/api/requests/${requestId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/requests/${requestId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ approvedFields: newFields })
@@ -134,7 +136,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     // Reject request via API
     rejectRequest: async (requestId) => {
         try {
-            await fetch(`/api/requests/${requestId}`, {
+            await fetch(`${API_BASE_URL}/api/requests/${requestId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ status: 'rejected' })
@@ -154,7 +156,7 @@ export const useVerificationStore = create<VerificationState>()((set, get) => ({
     // Revoke/Delete request via API
     revokeAccess: async (requestId) => {
         try {
-            await fetch(`/api/requests/${requestId}`, {
+            await fetch(`${API_BASE_URL}/api/requests/${requestId}`, {
                 method: 'DELETE',
                 headers: getAuthHeader()
             });

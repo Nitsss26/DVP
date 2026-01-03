@@ -1,4 +1,6 @@
 import { Header } from "@/components/layout/header";
+import { API_BASE_URL } from "@/config";
+
 import { Footer } from "@/components/layout/footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,7 +119,7 @@ export default function VerifyCredential() {
     try {
       // 1. Try fetching from Backend API (MongoDB)
       console.log("Fetching student from backend API...");
-      const response = await fetch(`/api/public/registry?enrollment=${encodeURIComponent(termToSearch)}`);
+      const response = await fetch(`${API_BASE_URL}/api/public/registry?enrollment=${encodeURIComponent(termToSearch)}`);
       if (response.ok) {
         const data = await response.json();
         if (data.students && data.students.length > 0) {
@@ -192,7 +194,7 @@ export default function VerifyCredential() {
 
       // Fetch registered user contact info from signup database
       try {
-        const contactRes = await fetch(`/api/public/user-contact/${encodeURIComponent(foundStudent.EnrlNo)}`);
+        const contactRes = await fetch(`${API_BASE_URL}/api/public/user-contact/${encodeURIComponent(foundStudent.EnrlNo)}`);
         const contactData = await contactRes.json();
         if (contactData.found) {
           setRegisteredContact({

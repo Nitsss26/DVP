@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { API_BASE_URL } from '../../config';
+
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +51,7 @@ const Signup = () => {
             if (role === 'student' && formData.enrollmentNo && formData.dob) {
                 // Use backend API instead of Mock Data
                 try {
-                    const res = await fetch(`/api/public/registry?enrollment=${formData.enrollmentNo}`);
+                    const res = await fetch(`${API_BASE_URL}/api/public/registry?enrollment=${formData.enrollmentNo}`);
                     const data = await res.json();
 
                     if (data.students && data.students.length > 0) {
@@ -109,7 +111,7 @@ const Signup = () => {
 
         // Call Send OTP API
         try {
-            const res = await fetch('/api/auth/otp', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: formData.email })
@@ -160,7 +162,7 @@ const Signup = () => {
 
         try {
             // Verify Email OTP
-            const emailRes = await fetch('/api/auth/verify-otp', {
+            const emailRes = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

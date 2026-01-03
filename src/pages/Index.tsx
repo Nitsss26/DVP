@@ -1,4 +1,6 @@
 import { Header } from "@/components/layout/header";
+import { API_BASE_URL } from '@/config';
+
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,7 +40,7 @@ export default function Index() {
 
     try {
       // Query MongoDB via backend API
-      const res = await fetch(`/api/public/registry?enrollment=${encodeURIComponent(enrollmentInput.trim())}`);
+      const res = await fetch(`${API_BASE_URL}/api/public/registry?enrollment=${encodeURIComponent(enrollmentInput.trim())}`);
       const data = await res.json();
 
       if (data.students && data.students.length > 0) {
@@ -63,11 +65,6 @@ export default function Index() {
               BranchCode: student.Details?.Profile?.BranchCode || 'N/A',
               FolderYear: student.Details?.Profile?.FolderYear || '2024'
             },
-            Summary: {
-              TotalMarks: 0,
-              MaxMarks: 0,
-              Division: 'N/A'
-            }
           },
           ExamRecords: student.ExamRecords || []
         };

@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { API_BASE_URL } from "@/config";
+
 
 export type ConcernStatus = 'pending' | 'resolved' | 'rejected';
 export type HelpRequestStatus = 'open' | 'responded' | 'closed';
@@ -67,8 +69,8 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
         try {
             // Use institute endpoint for all, or student endpoint for specific
             const url = studentEnrlNo
-                ? `/api/student/concerns?enrlNo=${studentEnrlNo}`
-                : '/api/institute/concerns';
+                ? `${API_BASE_URL}/api/student/concerns?enrlNo=${studentEnrlNo}`
+                : `${API_BASE_URL}/api/institute/concerns`;
             const res = await fetch(url, { headers: getAuthHeader() });
             if (res.ok) {
                 const data = await res.json();
@@ -90,10 +92,10 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
             const user = userStr ? JSON.parse(userStr) : null;
             const isInstitute = user?.role === 'institute';
 
-            let url = isInstitute ? '/api/institute/comm-logs' : '/api/employer/help-requests';
+            let url = isInstitute ? `${API_BASE_URL}/api/institute/comm-logs` : `${API_BASE_URL}/api/employer/help-requests`;
 
             if (filter?.studentEnrlNo && !isInstitute) {
-                url = `/api/student/help-requests`;
+                url = `${API_BASE_URL}/api/student/help-requests`;
             }
 
             const res = await fetch(url, { headers: getAuthHeader() });
@@ -112,7 +114,7 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
     // Raise concern via API
     raiseConcern: async (data) => {
         try {
-            const res = await fetch('/api/student/concern', {
+            const res = await fetch(`${API_BASE_URL}/api/student/concern`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify(data)
@@ -130,7 +132,7 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
     // Resolve concern (Institute action)
     resolveConcern: async (id, response) => {
         try {
-            await fetch(`/api/institute/concern/${id}`, {
+            await fetch(`${API_BASE_URL}/api/institute/concern/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ status: 'resolved', adminResponse: response })
@@ -148,7 +150,7 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
     // Reject concern (Institute action)
     rejectConcern: async (id, response) => {
         try {
-            await fetch(`/api/institute/concern/${id}`, {
+            await fetch(`${API_BASE_URL}/api/institute/concern/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ status: 'rejected', adminResponse: response })
@@ -166,7 +168,7 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
     // Create help request via API
     createHelpRequest: async (data) => {
         try {
-            const res = await fetch('/api/employer/help-request', {
+            const res = await fetch(`${API_BASE_URL}/api/employer/help-request`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify(data)
@@ -184,7 +186,7 @@ export const useConcernStore = create<ConcernState>()((set, get) => ({
     // Respond to help request (Student action)
     respondToHelpRequest: async (id, response, documentUrl) => {
         try {
-            await fetch(`/api/student/help-request/${id}`, {
+            await fetch(`${API_BASE_URL}/api/student/help-request/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
                 body: JSON.stringify({ responseText: response, documentUrl })

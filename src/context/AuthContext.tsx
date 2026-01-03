@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, INSTITUTE_EMAIL, INSTITUTE_PASS } from '../types/auth';
+import { API_BASE_URL } from '../config';
+
 import { toast } from 'sonner';
 
 interface GrantAccessData {
@@ -67,7 +69,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const fetchStaffList = async (token: string) => {
         try {
-            const res = await fetch('/api/institute/staff', {
+            const res = await fetch(`${API_BASE_URL}/api/institute/staff`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -82,7 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // 1. Verify Credentials (API Call)
     const verifyCredentials = async (email: string, password: string): Promise<{ user: User; token: string }> => {
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -152,7 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Frontend: same
             };
 
-            const res = await fetch('/api/auth/register', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -173,7 +175,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const grantAccess = async (data: GrantAccessData) => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch('/api/institute/staff', {
+            const res = await fetch(`${API_BASE_URL}/api/institute/staff`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -198,7 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const revokeAccess = async (email: string) => {
         const token = localStorage.getItem('token');
         try {
-            const res = await fetch(`/api/institute/staff/${email}`, {
+            const res = await fetch(`${API_BASE_URL}/api/institute/staff/${email}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

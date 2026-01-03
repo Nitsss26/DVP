@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { API_BASE_URL } from "@/config";
+
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -45,7 +47,7 @@ export default function ManageRecords() {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch(`/api/institute/student?page=${currentPage}&limit=10`, {
+            const res = await fetch(`${API_BASE_URL}/api/institute/student?page=${currentPage}&limit=10`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             if (res.ok) {
@@ -111,7 +113,7 @@ export default function ManageRecords() {
         setIsLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/institute/student/${searchTerm}`, {
+            const response = await fetch(`${API_BASE_URL}/api/institute/student/${searchTerm}`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             if (!response.ok) {
@@ -199,7 +201,7 @@ export default function ManageRecords() {
                 ExamRecords: data.ExamRecords || []
             };
 
-            const res = await fetch('/api/institute/student', {
+            const res = await fetch(`${API_BASE_URL}/api/institute/student`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(payload)
@@ -236,7 +238,7 @@ export default function ManageRecords() {
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             };
 
-            const res = await fetch(`/api/institute/student/${editingStudent.EnrlNo}`, {
+            const res = await fetch(`${API_BASE_URL}/api/institute/student/${editingStudent.EnrlNo}`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify(data)
@@ -277,7 +279,7 @@ export default function ManageRecords() {
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             };
 
-            const res = await fetch('/api/institute/bulk-upload', {
+            const res = await fetch(`${API_BASE_URL}/api/institute/bulk-upload`, {
                 method: 'POST',
                 headers,
                 body: JSON.stringify(newStudents)

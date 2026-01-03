@@ -5,6 +5,8 @@ import { useVerificationStore } from "@/stores/useVerificationStore";
 import { useAuth } from "@/context/AuthContext";
 import { Building2, GraduationCap, Clock, AlertCircle, Shield, Briefcase } from "lucide-react";
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
+
 import {
     BarChart,
     Bar,
@@ -41,7 +43,7 @@ export default function UniversityDashboard() {
         const fetchStats = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await fetch('/api/institute/stats', {
+                const res = await fetch(`${API_BASE_URL}/api/institute/stats`, {
                     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
                 if (res.ok) {

@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Search, ExternalLink, GraduationCap, Filter } from "lucide-react";
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/config";
+
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -35,7 +37,7 @@ export default function StudentRegistry() {
         year: selectedYear === 'All' ? '' : selectedYear
       });
 
-      const response = await fetch(`/api/public/registry?${queryParams.toString()}`, {
+      const response = await fetch(`${API_BASE_URL}/api/public/registry?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

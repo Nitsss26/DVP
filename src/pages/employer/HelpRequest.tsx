@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { API_BASE_URL } from "@/config";
+
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -58,7 +60,7 @@ export default function EmployerHelpRequest() {
         const timer = setTimeout(async () => {
             setIsSearching(true);
             try {
-                const res = await fetch(`/api/public/registry?search=${encodeURIComponent(enrlNo)}&limit=8`);
+                const res = await fetch(`${API_BASE_URL}/api/public/registry?search=${encodeURIComponent(enrlNo)}&limit=8`);
                 const data = await res.json();
 
                 if (data.students && data.students.length > 0) {
