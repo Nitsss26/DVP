@@ -8,21 +8,24 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
     port: 8080,
+    strictPort: true,
+    allowedHosts: [
+      'credentialverification-bu.in',
+      'www.credentialverification-bu.in'
+    ],
     hmr: {
       clientPort: 8080
-    },
-    proxy: {
-      '/api': {
-        target: 'https://uncavitied-shamanistic-cordie.ngrok-free.dev',
-        changeOrigin: true,
-        secure: false,
-        configure: (proxy, _options) => {
-          proxy.on('proxyReq', (proxyReq, _req, _res) => {
-            proxyReq.setHeader('ngrok-skip-browser-warning', 'true');
-          });
-        },
-      }
     }
+  },
+  // Add this section because your systemd uses 'npm run preview'
+  preview: {
+    host: "0.0.0.0",
+    port: 8080,
+    strictPort: true,
+    allowedHosts: [
+      'credentialverification-bu.in',
+      'www.credentialverification-bu.in'
+    ]
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

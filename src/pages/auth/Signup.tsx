@@ -111,14 +111,17 @@ const Signup = () => {
 
         // Call Send OTP API
         try {
-            const res = await fetch(`${API_BASE_URL}/api/auth/otp`, {
+            const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: formData.email })
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({ email: formData.email, role: role }),
             });
 
-            if (!res.ok) {
-                const text = await res.text();
+            if (!response.ok) {
+                const text = await response.text();
                 let errMsg = "Failed to send OTP";
                 try {
                     const err = JSON.parse(text);
@@ -164,7 +167,10 @@ const Signup = () => {
             // Verify Email OTP
             const emailRes = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
                 body: JSON.stringify({
                     email: formData.email,
                     otp: otpData.emailOtp
